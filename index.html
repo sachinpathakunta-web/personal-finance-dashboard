@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Finance">
+<meta name="theme-color" content="#0d1117">
+<title>Personal Finance Dashboard</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--elevated:#21262d;--border:#30363d;
+  --blue:#58a6ff;--green:#3fb950;--amber:#d29922;--red:#f85149;
+  --text:#e6edf3;--muted:#8b949e;--radius:12px;--radius-sm:8px;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+}
+html,body,#root{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;overflow:hidden}
+body{-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+input,button,select,textarea{font-family:inherit}
+button{cursor:pointer;border:none;background:none;color:inherit}
+::-webkit-scrollbar{display:none}
+.app{display:flex;flex-direction:column;height:100%;padding-top:var(--safe-top)}
+.screen{flex:1;overflow-y:auto;padding:0 0 80px;scroll-behavior:smooth}
+.tab-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(22,27,34,.96);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe-bottom);z-index:100}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 6px;gap:3px;font-size:10px;color:var(--muted);transition:color .15s;-webkit-tap-highlight-color:transparent}
+.tab.active{color:var(--blue)}
+.tab svg{width:22px;height:22px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin:0 12px 12px}
+.card-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.page-header{padding:16px 16px 8px;display:flex;align-items:center;justify-content:space-between}
+.page-title{font-size:22px;font-weight:700;letter-spacing:-.3px}
+.big-num{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-must{background:rgba(248,81,73,.15);color:var(--red)}
+.badge-needs{background:rgba(210,153,34,.15);color:var(--amber)}
+.badge-wants{background:rgba(88,166,255,.15);color:var(--blue)}
+.progress-bar{height:6px;background:var(--elevated);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .4s ease}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:14px 20px;border-radius:var(--radius);font-size:15px;font-weight:600;transition:opacity .15s;-webkit-tap-highlight-color:transparent}
+.btn:active{opacity:.8}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-surface{background:var(--elevated);color:var(--text)}
+.btn-danger{background:rgba(248,81,73,.15);color:var(--red)}
+.input-field{background:var(--elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:15px;color:var(--text);width:100%;outline:none;transition:border-color .15s}
+.input-field:focus{border-color:var(--blue)}
+.select-field{background:var(--elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:15px;color:var(--text);width:100%;outline:none;appearance:none}
+.form-group{margin-bottom:14px}
+.form-label{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;letter-spacing:.04em;text-transform:uppercase}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:340px;margin:0 auto}
+.key{height:64px;background:var(--elevated);border-radius:var(--radius);font-size:22px;font-weight:500;color:var(--text);display:flex;align-items:center;justify-content:center;transition:background .1s;-webkit-tap-highlight-color:transparent}
+.key:active{background:var(--border)}
+.amount-display{font-size:42px;font-weight:700;text-align:center;padding:20px 16px 16px;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cat-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;background:var(--elevated);border-radius:var(--radius-sm);font-size:10px;color:var(--muted);transition:all .15s;-webkit-tap-highlight-color:transparent;border:2px solid transparent;min-height:64px;justify-content:center}
+.cat-btn .em{font-size:22px;line-height:1}
+.cat-btn.selected{border-color:var(--blue);color:var(--blue);background:rgba(88,166,255,.1)}
+.tab-pills{display:flex;gap:6px;overflow-x:auto;padding:0 12px 12px;scrollbar-width:none}
+.tab-pill{padding:7px 14px;border-radius:20px;font-size:13px;font-weight:500;white-space:nowrap;background:var(--elevated);color:var(--muted);border:1px solid var(--border);-webkit-tap-highlight-color:transparent;flex-shrink:0}
+.tab-pill.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:flex-end}
+.modal{background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-height:92vh;overflow-y:auto;padding-bottom:calc(var(--safe-bottom) + 8px)}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 16px}
+.modal-header{padding:0 16px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:16px}
+.modal-title{font-size:17px;font-weight:600}
+.modal-body{padding:0 16px}
+.coach-card{background:linear-gradient(135deg,rgba(88,166,255,.08),rgba(63,185,80,.05));border:1px solid rgba(88,166,255,.25);border-radius:var(--radius);padding:16px;margin:0 12px 12px}
+.loan-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin:0 12px 10px}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.settings-label{font-size:15px}
+.settings-value{font-size:14px;color:var(--muted)}
+.toggle{width:44px;height:26px;background:var(--elevated);border-radius:13px;position:relative;transition:background .2s;cursor:pointer;border:1px solid var(--border);flex-shrink:0}
+.toggle.on{background:var(--green);border-color:var(--green)}
+.toggle::after{content:'';position:absolute;width:20px;height:20px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .2s}
+.toggle.on::after{transform:translateX(18px)}
+.empty-state{display:flex;flex-direction:column;align-items:center;gap:8px;padding:40px 20px;color:var(--muted);text-align:center;font-size:14px}
+.warn-bar{background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.25);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--amber);margin:0 12px 10px;display:flex;gap:8px;align-items:flex-start}
+.img-preview{width:100%;border-radius:var(--radius-sm);margin-top:8px;max-height:200px;object-fit:cover}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo } = React;
+const { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } = Recharts;
+
+const fmt = n => '\u20b9' + Math.abs(Math.round(n)).toLocaleString('en-IN');
+const fmtShort = n => { const a=Math.abs(n); if(a>=100000) return '\u20b9'+(a/100000).toFixed(1)+'L'; if(a>=1000) return '\u20b9'+(a/1000).toFixed(0)+'K'; return '\u20b9'+Math.round(a); };
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const SPEND_LABELS=['Must Have','Needs','Wants'];
+const PIE_COLORS=['#58a6ff','#3fb950','#d29922','#f85149','#a371f7','#79c0ff','#56d364','#ffa657','#ff7b72'];
+const LABEL_COLORS={'Must Have':'badge-must','Needs':'badge-needs','Wants':'badge-wants'};
+
+const CATS = [
+  {id:'food',emoji:'\uD83C\uDF54',name:'Food & Drink',label:'Wants'},
+  {id:'grocery',emoji:'\uD83D\uDED2',name:'Groceries',label:'Needs'},
+  {id:'milk',emoji:'\uD83E\uDD5B',name:'Milk & Dairy',label:'Needs'},
+  {id:'fuel',emoji:'\u26FD',name:'Fuel',label:'Needs'},
+  {id:'vehicle',emoji:'\uD83D\uDE97',name:'Vehicle',label:'Needs'},
+  {id:'transport',emoji:'\uD83D\uDE8C',name:'Transport',label:'Needs'},
+  {id:'home',emoji:'\uD83C\uDFE0',name:'Home',label:'Needs'},
+  {id:'bills',emoji:'\uD83D\uDCA1',name:'Bills',label:'Must Have'},
+  {id:'education',emoji:'\uD83C\uDF93',name:'Education',label:'Must Have'},
+  {id:'kids',emoji:'\uD83D\uDC76',name:'Kids',label:'Needs'},
+  {id:'health',emoji:'\uD83D\uDC8A',name:'Healthcare',label:'Needs'},
+  {id:'family',emoji:'\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67',name:'Family',label:'Needs'},
+  {id:'shopping',emoji:'\uD83D\uDECD\uFE0F',name:'Shopping',label:'Wants'},
+  {id:'entertain',emoji:'\uD83C\uDFAC',name:'Entertainment',label:'Wants'},
+  {id:'festival',emoji:'\uD83C\uDF89',name:'Festival',label:'Wants'},
+  {id:'personal',emoji:'\uD83D\uDC88',name:'Personal',label:'Wants'},
+  {id:'construction',emoji:'\uD83C\uDFD7\uFE0F',name:'Construction',label:'Needs'},
+  {id:'travel',emoji:'\u2708\uFE0F',name:'Travel',label:'Wants'},
+  {id:'other',emoji:'\uD83D\uDCE6',name:'Other',label:'Wants'},
+];
+
+const DEFAULT_EMIS=[
+  {id:'car',name:'Car Loan',emoji:'\uD83D\uDE97',amount:14381,dueDay:10,startMonth:'2025-10',endMonth:'2031-10',type:'emi'},
+  {id:'personal',name:'Personal Loan',emoji:'\uD83D\uDCB3',amount:9772,dueDay:5,startMonth:'2024-11',endMonth:'2031-05',type:'emi'},
+  {id:'home',name:'Home Loan',emoji:'\uD83C\uDFE0',amount:3800,dueDay:10,startMonth:'2020-01',endMonth:'2030-01',type:'emi',balanceOverride:160000},
+  {id:'iphone',name:'iPhone EMI',emoji:'\uD83D\uDCF1',amount:3746,dueDay:2,startMonth:'2024-11',endMonth:'2026-10',type:'emi'},
+];
+
+const DEFAULT_CHITTIS=[
+  {id:'ch1',name:'Chitti \u2014 Shyam Thatha 2',emoji:'\uD83E\uDD1D',amount:20000,dueDay:10,startMonth:'2024-08',endMonth:'2027-07',category:'Family'},
+  {id:'ch2',name:'Chitti \u2014 Madhavi Aunty',emoji:'\uD83D\uDCB3',amount:8700,dueDay:10,startMonth:'2026-06',endMonth:'2027-07',category:'CC Clearing'},
+];
+
+const DEFAULT_INVS=[
+  {id:'ppf',name:'PPF',emoji:'\uD83C\uDFE6',amount:1000,type:'ppf'},
+  {id:'ssy',name:'SSY \u2014 Vedaswi',emoji:'\uD83D\uDC67',amount:1000,type:'ssy'},
+  {id:'sip',name:'Vedaswi SIP (MF)',emoji:'\uD83D\uDCC8',amount:1500,type:'sip'},
+  {id:'grp',name:'Group Savings',emoji:'\uD83E\uDD1D',amount:2000,type:'group'},
+];
+
+const LS={
+  get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},
+  set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},
+};
+
+let _sbClient=null;
+const getSB=()=>{
+  const url=LS.get('sb_url',''),key=LS.get('sb_key','');
+  if(!url||!key) return null;
+  if(!_sbClient) _sbClient=supabase.createClient(url,key);
+  return _sbClient;
+};
+
+const monthKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+const parseMK=k=>{const[y,m]=k.split('-');return new Date(+y,+m-1,1);};
+const monthsBetween=(a,b)=>{const[ay,am]=a.split('-').map(Number);const[by,bm]=b.split('-').map(Number);return(by-ay)*12+(bm-am);};
+const addMonths=(mk,n)=>{const[y,m]=mk.split('-').map(Number);const d=new Date(y,m-1+n,1);return monthKey(d);};
+const today=new Date();
+const todayMK=monthKey(today);
+
+const calcProg=(loan)=>{
+  if(loan.balanceOverride){const rem=Math.ceil(loan.balanceOverride/loan.amount);return{paid:0,total:rem,remaining:rem,balanceBased:true,endEst:addMonths(todayMK,rem)};}
+  const total=monthsBetween(loan.startMonth,loan.endMonth);
+  const paid=Math.max(0,Math.min(total,monthsBetween(loan.startMonth,todayMK)));
+  return{paid,total,remaining:Math.max(0,total-paid)};
+};
+
+const Icon=({name,size=22,color='currentColor'})=>{
+  const p={
+    home:<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>,
+    add:<><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></>,
+    bank:<><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l9-5 9 5"/><line x1="7" y1="12" x2="7" y2="16"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="17" y1="12" x2="17" y2="16"/></>,
+    trends:<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>,
+    settings:<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></>,
+    chevL:<polyline points="15 18 9 12 15 6"/>,
+    chevR:<polyline points="9 18 15 12 9 6"/>,
+    x:<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+    trash:<><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></>,
+    camera:<><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></>,
+    img:<><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></>,
+    download:<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
+    upload:<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>,
+    plus:<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+    info:<><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></>,
+  };
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{p[name]}</svg>;
+};
+
+const Modal=({open,onClose,title,children})=>{
+  if(!open) return null;
+  return(
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="modal-handle"/>
+        <div className="modal-header">
+          <span className="modal-title">{title}</span>
+          <button onClick={onClose}><Icon name="x" size={20} color="var(--muted)"/></button>
+        </div>
+        <div className="modal-body">{children}</div>
+      </div>
+    </div>
+  );
+};
+
+// ── HOME ──────────────────────────────────────────────────────────────────
+const HomeScreen=({transactions,income,emis,chittis,investments,categories,currentMonth,setCurrentMonth,salary})=>{
+  const [expanded,setExpanded]=useState(false);
+  const mk=currentMonth;
+  const monthTxns=transactions.filter(t=>t.month===mk&&t.type==='expense');
+  const monthInc=income.filter(i=>i.month===mk);
+  const totalIncome=monthInc.length>0?monthInc.reduce((s,i)=>s+i.amount,0):salary;
+  const totalSpent=monthTxns.reduce((s,t)=>s+t.amount,0);
+  const emiOut=emis.reduce((s,e)=>{const p=calcProg(e);return p.remaining>0?s+e.amount:s;},0);
+  const chittiOut=chittis.reduce((s,c)=>{const p=calcProg(c);return p.remaining>0?s+c.amount:s;},0);
+  const invOut=DEFAULT_INVS.reduce((s,i)=>s+i.amount,0);
+  const jio=706;
+  const totalLocked=emiOut+chittiOut+invOut+jio;
+  const discretionary=totalIncome-totalLocked;
+  const leftMonth=discretionary-totalSpent;
+  const daysInMonth=new Date(today.getFullYear(),today.getMonth()+1,0).getDate();
+  const dayOfMonth=today.getDate();
+  const daysLeft=daysInMonth-dayOfMonth;
+  const catSpend={};
+  monthTxns.forEach(t=>{catSpend[t.category]=(catSpend[t.category]||0)+t.amount;});
+  const catArr=Object.entries(catSpend).sort((a,b)=>b[1]-a[1]);
+  const pieData=catArr.slice(0,7).map(([k,v])=>{const cat=categories.find(c=>c.id===k)||{emoji:'📦',name:k};return{name:cat.emoji+' '+cat.name,value:v};});
+  const score=Math.max(0,Math.min(100,Math.round(100-(totalSpent/Math.max(1,discretionary))*60-(totalLocked/Math.max(1,totalIncome))*30)));
+  const scoreColor=score>=65?'var(--green)':score>=45?'var(--amber)':'var(--red)';
+  const scoreLabel=score>=65?'Healthy':score>=45?'Watch Out':'Overspending';
+  const pace=dayOfMonth>0?(totalSpent/dayOfMonth)*daysInMonth:0;
+  const nudge=pace>discretionary?`At current pace, overspend by ${fmt(pace-discretionary)} this month. Cut non-essentials.`
+    :leftMonth<3000?`Only ${fmt(leftMonth)} left this month. Stay under essential spends only.`
+    :`${fmt(leftMonth)} available for ${daysLeft} more days. You're on track!`;
+  const navMonth=dir=>{const[y,m]=mk.split('-').map(Number);const d=new Date(y,m-1+dir,1);setCurrentMonth(monthKey(d));};
+  const reliefEvents=[
+    {month:'2026-10',label:'iPhone EMI ends',relief:3746,color:'#3fb950'},
+    {month:'2027-07',label:'Chitti clears (+2 commitments)',relief:28700,color:'#58a6ff'},
+    {month:'2030-01',label:'Home Loan closes',relief:3800,color:'#d29922'},
+    {month:'2031-05',label:'Personal Loan ends',relief:9772,color:'#a371f7'},
+    {month:'2031-10',label:'Car Loan ends',relief:14381,color:'#f85149'},
+  ].filter(e=>e.month>todayMK);
+  return(
+    <div className="screen">
+      <div className="page-header">
+        <div>
+          <div style={{fontSize:11,color:'var(--muted)',marginBottom:1,fontWeight:500}}>PERSONAL FINANCE DASHBOARD</div>
+          <div className="page-title">Hi, Sachin 👋</div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          <button onClick={()=>navMonth(-1)} style={{width:32,height:32,borderRadius:'50%',background:'var(--elevated)',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon name="chevL" size={14}/></button>
+          <div style={{fontSize:13,fontWeight:600,minWidth:80,textAlign:'center'}}>{MONTHS[parseMK(mk).getMonth()]} {parseMK(mk).getFullYear()}</div>
+          <button onClick={()=>navMonth(1)} style={{width:32,height:32,borderRadius:'50%',background:'var(--elevated)',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon name="chevR" size={14}/></button>
+        </div>
+      </div>
+
+      {/* Pulse */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,margin:'0 12px 12px'}}>
+        {[{l:'Income',v:totalIncome,c:'var(--green)'},{l:'Spent',v:totalSpent,c:'var(--text)'},{l:'Available',v:leftMonth,c:leftMonth>=0?'var(--green)':'var(--red)'}].map(i=>(
+          <div key={i.l} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:'14px 8px',textAlign:'center'}}>
+            <div style={{fontSize:18,fontWeight:700,color:i.c,fontVariantNumeric:'tabular-nums'}}>{fmtShort(i.v)}</div>
+            <div style={{fontSize:10,color:'var(--muted)',marginTop:3,fontWeight:600,letterSpacing:'.04em',textTransform:'uppercase'}}>{i.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Health Score */}
+      <div className="card">
+        <div className="card-title">Budget Health</div>
+        <div style={{display:'flex',alignItems:'center',gap:16}}>
+          <div style={{textAlign:'center',minWidth:72}}>
+            <div style={{fontSize:40,fontWeight:700,color:scoreColor,lineHeight:1}}>{score}</div>
+            <div style={{fontSize:11,fontWeight:600,color:scoreColor,marginTop:3}}>{scoreLabel}</div>
+          </div>
+          <div style={{flex:1}}>
+            <div className="progress-bar" style={{height:8,marginBottom:10}}><div className="progress-fill" style={{width:score+'%',background:scoreColor}}/></div>
+            <div style={{fontSize:12,color:'var(--muted)',lineHeight:1.5}}>{nudge}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Breakdown */}
+      <div className="card">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <div className="card-title" style={{marginBottom:0}}>Monthly Breakdown</div>
+          <button onClick={()=>setExpanded(e=>!e)} style={{fontSize:12,color:'var(--blue)'}}>{expanded?'Less':'More'}</button>
+        </div>
+        {[
+          {l:'Salary / Income',v:'+'+fmt(totalIncome),c:'var(--green)',b:true},
+          ...(expanded?[
+            {l:'Loans & EMIs',v:'-'+fmt(emiOut),c:'var(--red)'},
+            {l:'Chitti',v:'-'+fmt(chittiOut),c:'var(--amber)'},
+            {l:'Investments',v:'-'+fmt(invOut),c:'var(--blue)'},
+            {l:'Fixed Bills (Jio)',v:'-'+fmt(jio),c:'var(--muted)'},
+            {l:'Discretionary',v:fmt(discretionary),c:'var(--text)',tb:true},
+            {l:'Spent so far',v:'-'+fmt(totalSpent),c:'var(--muted)'},
+          ]:[]),
+          {l:`Left this month (${daysLeft}d)`,v:fmt(leftMonth),c:leftMonth>=0?'var(--green)':'var(--red)',tb:true,bold:true},
+        ].map((item,i)=>(
+          <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderTop:item.tb?'1px solid var(--border)':'none',borderBottom:item.b?'1px solid var(--border)':'none',marginTop:item.tb?4:0}}>
+            <span style={{fontSize:13,color:item.bold?'var(--text)':'var(--muted)'}}>{item.l}</span>
+            <span style={{fontSize:14,fontWeight:item.bold?700:600,color:item.c,fontVariantNumeric:'tabular-nums'}}>{item.v}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Spend by Label */}
+      {monthTxns.length>0&&(()=>{
+        const lblMap={};
+        monthTxns.forEach(t=>{lblMap[t.label||'Wants']=(lblMap[t.label||'Wants']||0)+t.amount;});
+        return(
+          <div className="card">
+            <div className="card-title">Spend by Type</div>
+            <div style={{display:'flex',gap:8}}>
+              {SPEND_LABELS.map(l=>{
+                const v=lblMap[l]||0;
+                const clr=l==='Must Have'?'var(--red)':l==='Needs'?'var(--amber)':'var(--blue)';
+                return(
+                  <div key={l} style={{flex:1,background:'var(--elevated)',borderRadius:'var(--radius-sm)',padding:'10px 8px',textAlign:'center'}}>
+                    <div style={{fontSize:15,fontWeight:700,color:clr,fontVariantNumeric:'tabular-nums'}}>{fmtShort(v)}</div>
+                    <div style={{fontSize:10,color:'var(--muted)',marginTop:3,fontWeight:600}}>{l}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Pie */}
+      {pieData.length>0&&(
+        <div className="card">
+          <div className="card-title">Spending This Month</div>
+          <ResponsiveContainer width="100%" height={170}>
+            <PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={48} outerRadius={75} dataKey="value" paddingAngle={2}>
+              {pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}
+            </Pie><Tooltip formatter={v=>fmt(v)} contentStyle={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,fontSize:12}}/></PieChart>
+          </ResponsiveContainer>
+          {catArr.slice(0,5).map(([k,v],i)=>{
+            const cat=categories.find(c=>c.id===k)||{emoji:'📦',name:k};
+            const pct=totalSpent>0?Math.round(v/totalSpent*100):0;
+            return(
+              <div key={k} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderTop:'1px solid var(--border)'}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/>
+                <span style={{flex:1,fontSize:13}}>{cat.emoji} {cat.name}</span>
+                <span style={{fontSize:11,color:'var(--muted)',minWidth:28}}>{pct}%</span>
+                <span style={{fontSize:13,fontWeight:600,fontVariantNumeric:'tabular-nums',minWidth:68,textAlign:'right'}}>{fmt(v)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Coach */}
+      <div className="coach-card">
+        <div style={{fontSize:11,fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--blue)',marginBottom:6}}>💡 Finance Coach</div>
+        <div style={{fontSize:14,lineHeight:1.5}}>{nudge}</div>
+      </div>
+
+      {/* Relief Timeline */}
+      {reliefEvents.length>0&&(
+        <div className="card">
+          <div className="card-title">Upcoming Relief 🎯</div>
+          <div style={{position:'relative',paddingLeft:18}}>
+            <div style={{position:'absolute',left:3,top:8,bottom:8,width:2,background:'var(--border)',borderRadius:1}}/>
+            {reliefEvents.map((e,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'8px 0',position:'relative'}}>
+                <div style={{position:'absolute',left:-15,top:12,width:8,height:8,borderRadius:'50%',background:e.color,boxShadow:`0 0 6px ${e.color}`}}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,color:'var(--muted)',marginBottom:2}}>{MONTHS[parseInt(e.month.split('-')[1])-1]} {e.month.split('-')[0]}</div>
+                  <div style={{fontSize:13}}>{e.label}</div>
+                </div>
+                <div style={{fontSize:13,fontWeight:700,color:e.color,fontVariantNumeric:'tabular-nums'}}>+{fmt(e.relief)}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:10,padding:'10px 12px',background:'var(--elevated)',borderRadius:'var(--radius-sm)'}}>
+            <div style={{fontSize:11,color:'var(--muted)'}}>After Jul 2027, discretionary becomes</div>
+            <div style={{fontSize:20,fontWeight:700,color:'var(--green)'}}>~\u20b948,841/month</div>
+          </div>
+        </div>
+      )}
+      {transactions.filter(t=>t.month===mk).length===0&&(
+        <div className="card"><div className="empty-state"><div style={{fontSize:36}}>📊</div><div>No entries for this month yet.</div><div style={{fontSize:12}}>Tap + to add your first expense.</div></div></div>
+      )}
+    </div>
+  );
+};
+
+// ── ADD ───────────────────────────────────────────────────────────────────
+const AddScreen=({categories,setCategories,onAdd})=>{
+  const [tab,setTab]=useState('expense');
+  const [amt,setAmt]=useState('');
+  const [selCat,setSelCat]=useState('');
+  const [date,setDate]=useState(today.toISOString().split('T')[0]);
+  const [account,setAccount]=useState('Cash');
+  const [note,setNote]=useState('');
+  const [label,setLabel]=useState('Wants');
+  const [imgB64,setImgB64]=useState(null);
+  const [incType,setIncType]=useState('Salary');
+  const [incMonth,setIncMonth]=useState(todayMK);
+  const [invType,setInvType]=useState('PPF');
+  const [tranTo,setTranTo]=useState('Chitti \u2014 Shyam Thatha 2');
+  const [newCatModal,setNewCatModal]=useState(false);
+  const [nc,setNc]=useState({emoji:'📦',name:'',label:'Wants'});
+  const [flash,setFlash]=useState('');
+  const imgRef=useRef();
+
+  const tap=k=>{
+    if(k==='⌫') setAmt(a=>a.slice(0,-1));
+    else if(k==='.'&&amt.includes('.')) return;
+    else if(amt.replace('.','').length<9) setAmt(a=>a+k);
+  };
+
+  const save=()=>{
+    const v=parseFloat(amt);
+    if(!v||v<=0) return;
+    const entry={id:'e'+Date.now(),type:tab,amount:v,date,month:date.slice(0,7),note};
+    if(tab==='expense'){if(!selCat){setFlash('Pick a category');setTimeout(()=>setFlash(''),1500);return;}Object.assign(entry,{category:selCat,account,label,image:imgB64});}
+    else if(tab==='income') Object.assign(entry,{incomeType:incType,month:incMonth});
+    else if(tab==='investment') entry.investType=invType;
+    else Object.assign(entry,{transferTo:tranTo});
+    onAdd(entry);
+    setAmt('');setSelCat('');setNote('');setImgB64(null);
+    setFlash('✅ Saved!');setTimeout(()=>setFlash(''),1200);
+  };
+
+  const addCat=()=>{
+    if(!nc.name.trim()) return;
+    const cat={id:'c'+Date.now(),...nc,name:nc.name.trim()};
+    setCategories(p=>[...p,cat]);setSelCat(cat.id);setLabel(cat.label);
+    setNewCatModal(false);setNc({emoji:'📦',name:'',label:'Wants'});
+  };
+
+  const KEYS=['7','8','9','4','5','6','1','2','3','.','0','⌫'];
+
+  return(
+    <div className="screen">
+      <div className="page-header"><div className="page-title">Add Entry</div></div>
+      <div className="tab-pills">
+        {[['expense','💸 Expense'],['income','💰 Income'],['investment','📈 Investment'],['transfer','🔄 Transfer']].map(([k,l])=>(
+          <button key={k} className={`tab-pill ${tab===k?'active':''}`} onClick={()=>setTab(k)}>{l}</button>
+        ))}
+      </div>
+
+      {tab==='expense'&&(
+        <div style={{padding:'0 12px'}}>
+          <div className="amount-display" style={{color:amt?'var(--text)':'var(--muted)'}}>{'\u20b9'} {amt||'0'}</div>
+          <div className="keypad" style={{marginBottom:18}}>{KEYS.map(k=><button key={k} className="key" onClick={()=>tap(k)}>{k}</button>)}</div>
+          <div className="form-group">
+            <div className="form-label">Category</div>
+            <div className="cat-grid">
+              {categories.map(c=>(
+                <button key={c.id} className={`cat-btn ${selCat===c.id?'selected':''}`} onClick={()=>{setSelCat(c.id);setLabel(c.label||'Wants');}}>
+                  <span className="em">{c.emoji}</span>
+                  <span style={{fontSize:9,lineHeight:1.2,textAlign:'center'}}>{c.name.split(' ')[0]}</span>
+                </button>
+              ))}
+              <button className="cat-btn" onClick={()=>setNewCatModal(true)}>
+                <span className="em">➕</span><span style={{fontSize:9}}>New</span>
+              </button>
+            </div>
+          </div>
+          <div className="form-group">
+            <div className="form-label">Spend Type</div>
+            <div style={{display:'flex',gap:6}}>
+              {SPEND_LABELS.map(l=>{
+                const ac=l===label;
+                const clr=l==='Must Have'?'var(--red)':l==='Needs'?'var(--amber)':'var(--blue)';
+                const bg=l==='Must Have'?'rgba(248,81,73,.18)':l==='Needs'?'rgba(210,153,34,.18)':'rgba(88,166,255,.18)';
+                return(
+                  <button key={l} onClick={()=>setLabel(l)} style={{flex:1,padding:'9px 4px',borderRadius:'var(--radius-sm)',fontSize:11,fontWeight:600,background:ac?bg:'var(--elevated)',color:ac?clr:'var(--muted)',border:ac?`1px solid ${clr}`:'1px solid var(--border)'}}>
+                    {l}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
+            <div><div className="form-label">Date</div><input type="date" className="input-field" value={date} onChange={e=>setDate(e.target.value)} style={{fontSize:13,padding:'10px 10px'}}/></div>
+            <div><div className="form-label">Account</div>
+              <select className="select-field" value={account} onChange={e=>setAccount(e.target.value)} style={{fontSize:13,padding:'10px 10px'}}>
+                {['Cash','ICICI','SBI','UPI','Credit Card'].map(a=><option key={a}>{a}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="form-group">
+            <div className="form-label">Note (optional)</div>
+            <input className="input-field" value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. Swiggy dinner, D-Mart"/>
+          </div>
+          <div className="form-group">
+            <div className="form-label">Bill / Receipt Image</div>
+            <input type="file" accept="image/*" ref={imgRef} style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setImgB64(ev.target.result);r.readAsDataURL(f);}}/>
+            <div style={{display:'flex',gap:8}}>
+              <button className="btn btn-surface" style={{flex:1,padding:'10px',fontSize:13}} onClick={()=>imgRef.current.click()}><Icon name="camera" size={15}/>  Photo / File</button>
+              {imgB64&&<button className="btn btn-danger" style={{padding:'10px 14px',fontSize:13}} onClick={()=>setImgB64(null)}>Remove</button>}
+            </div>
+            {imgB64&&<img src={imgB64} className="img-preview" alt="receipt"/>}
+          </div>
+          {flash&&<div style={{textAlign:'center',color:flash.includes('✅')?'var(--green)':'var(--amber)',marginBottom:8,fontSize:14,fontWeight:600}}>{flash}</div>}
+          <button className="btn btn-primary" style={{width:'100%',marginBottom:4}} onClick={save}>Save Expense</button>
+        </div>
+      )}
+
+      {tab==='income'&&(
+        <div style={{padding:'0 12px'}}>
+          <div className="amount-display">{'\u20b9'} {amt||'0'}</div>
+          <div className="keypad" style={{marginBottom:18}}>{KEYS.map(k=><button key={k} className="key" onClick={()=>tap(k)}>{k}</button>)}</div>
+          <div className="form-group"><div className="form-label">Type</div>
+            <select className="select-field" value={incType} onChange={e=>setIncType(e.target.value)}>
+              {['Salary','Variable Pay','Bonus','Freelance','Interest/Dividend','Chitti Payout','Other'].map(t=><option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
+            <div><div className="form-label">For Month</div><input type="month" className="input-field" value={incMonth} onChange={e=>setIncMonth(e.target.value)}/></div>
+            <div><div className="form-label">Date Received</div><input type="date" className="input-field" value={date} onChange={e=>setDate(e.target.value)}/></div>
+          </div>
+          <div className="form-group"><div className="form-label">Note</div><input className="input-field" value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. Q1 variable pay \u20b924,000"/></div>
+          {flash&&<div style={{textAlign:'center',color:'var(--green)',marginBottom:8,fontSize:14,fontWeight:600}}>{flash}</div>}
+          <button className="btn btn-primary" style={{width:'100%'}} onClick={save}>Save Income</button>
+        </div>
+      )}
+
+      {tab==='investment'&&(
+        <div style={{padding:'0 12px'}}>
+          <div className="amount-display">{'\u20b9'} {amt||'0'}</div>
+          <div className="keypad" style={{marginBottom:18}}>{KEYS.map(k=><button key={k} className="key" onClick={()=>tap(k)}>{k}</button>)}</div>
+          <div className="form-group"><div className="form-label">Investment Type</div>
+            <select className="select-field" value={invType} onChange={e=>setInvType(e.target.value)}>
+              {['PPF','SSY (Vedaswi)','SIP / Mutual Fund','FD','Group Savings','NPS','Gold','Other'].map(t=><option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="form-group"><div className="form-label">Date</div><input type="date" className="input-field" value={date} onChange={e=>setDate(e.target.value)}/></div>
+          <div className="form-group"><div className="form-label">Note</div><input className="input-field" value={note} onChange={e=>setNote(e.target.value)} placeholder="Fund name, bank, account number..."/></div>
+          {flash&&<div style={{textAlign:'center',color:'var(--green)',marginBottom:8,fontSize:14,fontWeight:600}}>{flash}</div>}
+          <button className="btn btn-primary" style={{width:'100%'}} onClick={save}>Save Investment</button>
+        </div>
+      )}
+
+      {tab==='transfer'&&(
+        <div style={{padding:'0 12px'}}>
+          <div style={{marginBottom:14,padding:12,background:'var(--elevated)',borderRadius:'var(--radius-sm)',fontSize:13,color:'var(--muted)',lineHeight:1.5}}>
+            Chitti payments, credit card bill payments, loan prepayments. These are tracked separately and don't count as expenses in your spending analysis.
+          </div>
+          <div className="amount-display">{'\u20b9'} {amt||'0'}</div>
+          <div className="keypad" style={{marginBottom:18}}>{KEYS.map(k=><button key={k} className="key" onClick={()=>tap(k)}>{k}</button>)}</div>
+          <div className="form-group"><div className="form-label">Transfer To</div>
+            <select className="select-field" value={tranTo} onChange={e=>setTranTo(e.target.value)}>
+              {['Chitti \u2014 Shyam Thatha 2','Chitti \u2014 Madhavi Aunty','Credit Card Bill','Car Loan Prepayment','Personal Loan Prepayment','Home Loan Prepayment','Other'].map(t=><option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="form-group"><div className="form-label">Date</div><input type="date" className="input-field" value={date} onChange={e=>setDate(e.target.value)}/></div>
+          <div className="form-group"><div className="form-label">Note</div><input className="input-field" value={note} onChange={e=>setNote(e.target.value)}/></div>
+          {flash&&<div style={{textAlign:'center',color:'var(--green)',marginBottom:8,fontSize:14,fontWeight:600}}>{flash}</div>}
+          <button className="btn btn-primary" style={{width:'100%'}} onClick={save}>Save Transfer</button>
+        </div>
+      )}
+
+      <Modal open={newCatModal} onClose={()=>setNewCatModal(false)} title="New Category">
+        <div style={{display:'grid',gridTemplateColumns:'60px 1fr',gap:8,marginBottom:14}}>
+          <div><div className="form-label">Emoji</div><input className="input-field" value={nc.emoji} onChange={e=>setNc(c=>({...c,emoji:e.target.value}))} style={{textAlign:'center',fontSize:22,padding:'8px 4px'}}/></div>
+          <div><div className="form-label">Name</div><input className="input-field" value={nc.name} onChange={e=>setNc(c=>({...c,name:e.target.value}))} placeholder="Category name"/></div>
+        </div>
+        <div className="form-group"><div className="form-label">Spend Type</div>
+          <select className="select-field" value={nc.label} onChange={e=>setNc(c=>({...c,label:e.target.value}))}>
+            {SPEND_LABELS.map(l=><option key={l}>{l}</option>)}
+          </select>
+        </div>
+        <button className="btn btn-primary" style={{width:'100%'}} onClick={addCat}>Add Category</button>
+      </Modal>
+    </div>
+  );
+};
+
+// ── LOANS ─────────────────────────────────────────────────────────────────
+const LoansScreen=({emis,setEmis,chittis,setChittis})=>{
+  const [tab,setTab]=useState('emis');
+  const [addModal,setAddModal]=useState(false);
+  const [addType,setAddType]=useState('emi');
+  const [form,setForm]=useState({name:'',emoji:'🏦',amount:'',dueDay:'10',startMonth:todayMK,endMonth:'',category:''});
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+
+  const LCard=({loan,onDel})=>{
+    const p=calcProg(loan);
+    const endMK=p.endEst||loan.endMonth;
+    const pct=p.total>0?Math.min(100,Math.round((p.paid/p.total)*100)):0;
+    const clr=pct>=80?'var(--green)':pct>=40?'var(--amber)':'var(--red)';
+    return(
+      <div className="loan-card">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:4}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:600}}>{loan.emoji} {loan.name}</div>
+            <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{fmt(loan.amount)}/month · due {loan.dueDay}th</div>
+          </div>
+          <button onClick={()=>onDel(loan.id)} style={{padding:6}}><Icon name="trash" size={14} color="var(--muted)"/></button>
+        </div>
+        <div className="progress-bar" style={{marginTop:10}}><div className="progress-fill" style={{width:Math.max(2,pct)+'%',background:clr}}/></div>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--muted)',marginTop:5}}>
+          {p.balanceBased?<span>Balance: ~{fmt(loan.balanceOverride)}</span>:<span>{p.paid} of {p.total} paid</span>}
+          <span>{p.remaining} months left</span>
+        </div>
+        {endMK&&<div style={{marginTop:4,fontSize:12,color:'var(--muted)'}}>
+          Ends: {MONTHS[parseInt(endMK.split('-')[1])-1]} {endMK.split('-')[0]}
+          {p.remaining<=6&&p.remaining>0&&<span style={{color:'var(--green)',marginLeft:6}}>🎉 Almost done!</span>}
+          {p.remaining===0&&<span style={{color:'var(--green)',marginLeft:6}}>✅ Completed!</span>}
+        </div>}
+      </div>
+    );
+  };
+
+  const CCard=({c,onDel})=>{
+    const total=monthsBetween(c.startMonth,c.endMonth);
+    const paid=Math.max(0,Math.min(total,monthsBetween(c.startMonth,todayMK)));
+    const rem=Math.max(0,total-paid);
+    const pct=total>0?Math.round((paid/total)*100):0;
+    return(
+      <div className="loan-card">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:4}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:600}}>{c.emoji} {c.name}</div>
+            <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{c.category} · {fmt(c.amount)}/month · {c.dueDay}th</div>
+          </div>
+          <button onClick={()=>onDel(c.id)} style={{padding:6}}><Icon name="trash" size={14} color="var(--muted)"/></button>
+        </div>
+        <div className="progress-bar" style={{marginTop:10}}><div className="progress-fill" style={{width:Math.max(2,pct)+'%',background:'var(--blue)'}}/></div>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--muted)',marginTop:5}}>
+          <span>{paid} of {total} months paid</span><span>{rem} remaining</span>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',marginTop:5,fontSize:12}}>
+          <span style={{color:'var(--muted)'}}>Paid: <b style={{color:'var(--text)'}}>{fmt(paid*c.amount)}</b></span>
+          <span style={{color:'var(--muted)'}}>Left: <b style={{color:'var(--amber)'}}>{fmt(rem*c.amount)}</b></span>
+        </div>
+        <div style={{marginTop:4,fontSize:12,color:'var(--muted)'}}>Ends: {MONTHS[parseInt(c.endMonth.split('-')[1])-1]} {c.endMonth.split('-')[0]}</div>
+      </div>
+    );
+  };
+
+  const doAdd=()=>{
+    if(!form.name||!form.amount||!form.endMonth) return;
+    const e={...form,id:'l'+Date.now(),amount:parseFloat(form.amount),dueDay:parseInt(form.dueDay),type:addType};
+    if(addType==='emi') setEmis(p=>[...p,e]);
+    else setChittis(p=>[...p,e]);
+    setAddModal(false);
+    setForm({name:'',emoji:'🏦',amount:'',dueDay:'10',startMonth:todayMK,endMonth:'',category:''});
+  };
+
+  return(
+    <div className="screen">
+      <div className="page-header">
+        <div className="page-title">Loans & Commitments</div>
+        <button className="btn btn-primary" style={{padding:'8px 14px',fontSize:13}} onClick={()=>setAddModal(true)}><Icon name="plus" size={14}/> Add</button>
+      </div>
+      <div className="tab-pills">
+        <button className={`tab-pill ${tab==='emis'?'active':''}`} onClick={()=>setTab('emis')}>🏦 Loans & EMIs</button>
+        <button className={`tab-pill ${tab==='chitti'?'active':''}`} onClick={()=>setTab('chitti')}>🤝 Chitti</button>
+      </div>
+      {tab==='emis'&&<>
+        {emis.map(e=><LCard key={e.id} loan={e} onDel={id=>setEmis(p=>p.filter(x=>x.id!==id))}/>)}
+        <div style={{margin:'0 12px 12px',padding:'12px 16px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:13,color:'var(--muted)'}}>Total EMI burden</span>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:18,fontWeight:700,color:'var(--red)',fontVariantNumeric:'tabular-nums'}}>{fmt(emis.reduce((s,e)=>s+e.amount,0))}/mo</div>
+            <div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{Math.round(emis.reduce((s,e)=>s+e.amount,0)/83000*100)}% of salary</div>
+          </div>
+        </div>
+      </>}
+      {tab==='chitti'&&<>
+        {chittis.map(c=><CCard key={c.id} c={c} onDel={id=>setChittis(p=>p.filter(x=>x.id!==id))}/>)}
+        <div style={{margin:'0 12px 12px',padding:'12px 16px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:13,color:'var(--muted)'}}>Total Chitti</span>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:18,fontWeight:700,color:'var(--amber)',fontVariantNumeric:'tabular-nums'}}>{fmt(chittis.reduce((s,c)=>s+c.amount,0))}/mo</div>
+            <div style={{fontSize:11,color:'var(--green)',marginTop:2}}>Both end Jul 2027 🎯</div>
+          </div>
+        </div>
+      </>}
+      <Modal open={addModal} onClose={()=>setAddModal(false)} title="Add Loan / Commitment">
+        <div style={{display:'flex',gap:8,marginBottom:14}}>
+          {['emi','chitti'].map(t=>(
+            <button key={t} onClick={()=>setAddType(t)} style={{flex:1,padding:'10px',borderRadius:'var(--radius-sm)',background:addType===t?'var(--blue)':'var(--elevated)',color:addType===t?'#fff':'var(--muted)',fontWeight:600,fontSize:13,border:'none'}}>
+              {t==='emi'?'🏦 Loan/EMI':'🤝 Chitti'}
+            </button>
+          ))}
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'56px 1fr',gap:8,marginBottom:12}}>
+          <div><div className="form-label">Emoji</div><input className="input-field" value={form.emoji} onChange={e=>f('emoji',e.target.value)} style={{textAlign:'center',fontSize:20,padding:'8px 4px'}}/></div>
+          <div><div className="form-label">Name</div><input className="input-field" value={form.name} onChange={e=>f('name',e.target.value)} placeholder="e.g. Car Loan"/></div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
+          <div><div className="form-label">Monthly Amount</div><input className="input-field" type="number" value={form.amount} onChange={e=>f('amount',e.target.value)} placeholder="0"/></div>
+          <div><div className="form-label">Due Day</div><input className="input-field" type="number" value={form.dueDay} onChange={e=>f('dueDay',e.target.value)} placeholder="10"/></div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
+          <div><div className="form-label">Start Month</div><input type="month" className="input-field" value={form.startMonth} onChange={e=>f('startMonth',e.target.value)}/></div>
+          <div><div className="form-label">End Month</div><input type="month" className="input-field" value={form.endMonth} onChange={e=>f('endMonth',e.target.value)}/></div>
+        </div>
+        {addType==='chitti'&&<div className="form-group"><div className="form-label">Purpose</div><input className="input-field" value={form.category} onChange={e=>f('category',e.target.value)} placeholder="e.g. Family, CC Clearing"/></div>}
+        <button className="btn btn-primary" style={{width:'100%',marginTop:4}} onClick={doAdd}>Add</button>
+      </Modal>
+    </div>
+  );
+};
+
+// ── TRENDS ────────────────────────────────────────────────────────────────
+const TrendsScreen=({transactions,income,categories,salary})=>{
+  const [tab,setTab]=useState('overview');
+  const [selMK,setSelMK]=useState(todayMK);
+
+  const last6=Array.from({length:6},(_,i)=>{const d=new Date(today.getFullYear(),today.getMonth()-5+i,1);return monthKey(d);});
+
+  const mData=last6.map(mk=>{
+    const txns=transactions.filter(t=>t.month===mk&&t.type==='expense');
+    const inc=income.filter(i=>i.month===mk);
+    const totalInc=inc.length>0?inc.reduce((s,i)=>s+i.amount,0):salary;
+    const spent=txns.reduce((s,t)=>s+t.amount,0);
+    return{mk,label:MONTHS[parseInt(mk.split('-')[1])-1],income:totalInc,spent,saved:Math.max(0,totalInc-spent)};
+  });
+
+  const selTxns=transactions.filter(t=>t.month===selMK&&t.type==='expense');
+  const catMap={};
+  selTxns.forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.amount;});
+  const catArr=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  const totalSel=catArr.reduce((s,[,v])=>s+v,0);
+  const prevMap={};
+  transactions.filter(t=>t.month===addMonths(selMK,-1)&&t.type==='expense').forEach(t=>{prevMap[t.category]=(prevMap[t.category]||0)+t.amount;});
+
+  return(
+    <div className="screen">
+      <div className="page-header"><div className="page-title">Trends & Insights</div></div>
+      <div className="tab-pills">
+        {[['overview','📊 Overview'],['category','🥧 Categories'],['savings','💚 Savings'],['transactions','📋 History']].map(([k,l])=>(
+          <button key={k} className={`tab-pill ${tab===k?'active':''}`} onClick={()=>setTab(k)}>{l}</button>
+        ))}
+      </div>
+
+      {tab==='overview'&&<>
+        <div className="card">
+          <div className="card-title">Income vs Spending (6 months)</div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={mData} margin={{top:4,right:4,bottom:0,left:-22}}>
+              <XAxis dataKey="label" tick={{fontSize:11,fill:'var(--muted)'}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fontSize:10,fill:'var(--muted)'}} axisLine={false} tickLine={false} tickFormatter={v=>fmtShort(v).replace('\u20b9','')}/>
+              <Tooltip formatter={(v,n)=>[fmt(v),n]} contentStyle={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,fontSize:12}} labelStyle={{color:'var(--text)'}}/>
+              <Bar dataKey="income" name="Income" fill="#3fb950" radius={[3,3,0,0]}/>
+              <Bar dataKey="spent" name="Spent" fill="#f85149" radius={[3,3,0,0]}/>
+              <Bar dataKey="saved" name="Gap" fill="#58a6ff" radius={[3,3,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="card">
+          <div className="card-title">Spend by Label — This Month</div>
+          {SPEND_LABELS.map(lbl=>{
+            const v=transactions.filter(t=>t.month===todayMK&&t.type==='expense'&&t.label===lbl).reduce((s,t)=>s+t.amount,0);
+            const clr=lbl==='Must Have'?'var(--red)':lbl==='Needs'?'var(--amber)':'var(--blue)';
+            return v>0?(
+              <div key={lbl} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+                <span className={`badge ${LABEL_COLORS[lbl]}`}>{lbl}</span>
+                <span style={{fontWeight:700,fontVariantNumeric:'tabular-nums',color:clr}}>{fmt(v)}</span>
+              </div>
+            ):null;
+          })}
+          {!transactions.some(t=>t.month===todayMK&&t.type==='expense')&&<div className="empty-state">No expenses this month yet</div>}
+        </div>
+      </>}
+
+      {tab==='category'&&<>
+        <div style={{padding:'0 12px 10px'}}>
+          <select className="select-field" value={selMK} onChange={e=>setSelMK(e.target.value)}>
+            {last6.map(mk=><option key={mk} value={mk}>{MONTHS[parseInt(mk.split('-')[1])-1]} {mk.split('-')[0]}</option>)}
+          </select>
+        </div>
+        {catArr.length>0?<>
+          <div className="card">
+            <ResponsiveContainer width="100%" height={170}>
+              <PieChart><Pie data={catArr.map(([k,v])=>({name:k,value:v}))} cx="50%" cy="50%" innerRadius={46} outerRadius={72} dataKey="value" paddingAngle={2}>
+                {catArr.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}
+              </Pie><Tooltip formatter={v=>fmt(v)} contentStyle={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,fontSize:12}}/></PieChart>
+            </ResponsiveContainer>
+            <div style={{textAlign:'center',fontSize:13,color:'var(--muted)',marginTop:4}}>Total: {fmt(totalSel)}</div>
+          </div>
+          <div className="card">
+            {catArr.map(([k,v],i)=>{
+              const cat=categories.find(c=>c.id===k)||{emoji:'📦',name:k};
+              const pct=totalSel>0?Math.round(v/totalSel*100):0;
+              const prev=prevMap[k]||0;
+              const delta=prev>0?Math.round((v-prev)/prev*100):null;
+              return(
+                <div key={k} style={{display:'flex',alignItems:'center',gap:8,padding:'9px 0',borderBottom:i<catArr.length-1?'1px solid var(--border)':'none'}}>
+                  <div style={{width:8,height:8,borderRadius:'50%',background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/>
+                  <span style={{flex:1,fontSize:13}}>{cat.emoji} {cat.name}</span>
+                  {delta!==null&&<span style={{fontSize:11,color:delta>15?'var(--red)':delta<-15?'var(--green)':'var(--muted)',minWidth:34,textAlign:'center'}}>{delta>0?'↑':'↓'}{Math.abs(delta)}%</span>}
+                  <span style={{fontSize:11,color:'var(--muted)',minWidth:24,textAlign:'right'}}>{pct}%</span>
+                  <span style={{fontSize:13,fontWeight:600,fontVariantNumeric:'tabular-nums',minWidth:68,textAlign:'right'}}>{fmt(v)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </>:<div className="card"><div className="empty-state"><div style={{fontSize:32}}>📊</div>No expenses for this month</div></div>}
+      </>}
+
+      {tab==='savings'&&<>
+        <div className="card">
+          <div className="card-title">Savings Rate — 6 Months</div>
+          <ResponsiveContainer width="100%" height={160}>
+            <LineChart data={mData} margin={{top:4,right:8,bottom:0,left:-18}}>
+              <XAxis dataKey="label" tick={{fontSize:11,fill:'var(--muted)'}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fontSize:10,fill:'var(--muted)'}} axisLine={false} tickLine={false} tickFormatter={v=>v+'%'}/>
+              <Tooltip formatter={v=>[v+'%','Savings Rate']} contentStyle={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,fontSize:12}}/>
+              <Line type="monotone" dataKey={d=>Math.max(0,Math.round((d.saved/Math.max(1,d.income))*100))} stroke="var(--green)" strokeWidth={2.5} dot={{fill:'var(--green)',r:4}}/>
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="card">
+          <div className="card-title">Monthly Summary</div>
+          {mData.map((d,i)=>(
+            <div key={i} style={{padding:'10px 0',borderBottom:i<5?'1px solid var(--border)':'none'}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                <span style={{fontSize:13,fontWeight:600}}>{d.label} {d.mk.split('-')[0]}</span>
+                <span style={{fontSize:13,color:'var(--green)',fontVariantNumeric:'tabular-nums'}}>+{fmt(d.saved)}</span>
+              </div>
+              <div style={{display:'flex',gap:12}}>
+                <span style={{fontSize:11,color:'var(--muted)'}}>In: {fmt(d.income)}</span>
+                <span style={{fontSize:11,color:'var(--muted)'}}>Out: {fmt(d.spent)}</span>
+                <span style={{fontSize:11,color:'var(--green)'}}>Rate: {Math.max(0,Math.round((d.saved/Math.max(1,d.income))*100))}%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>}
+
+      {tab==='transactions'&&<>
+        <div style={{padding:'0 12px 10px'}}>
+          <select className="select-field" value={selMK} onChange={e=>setSelMK(e.target.value)}>
+            {last6.map(mk=><option key={mk} value={mk}>{MONTHS[parseInt(mk.split('-')[1])-1]} {mk.split('-')[0]}</option>)}
+          </select>
+        </div>
+        {transactions.filter(t=>t.month===selMK).length>0?(
+          <div className="card">
+            {transactions.filter(t=>t.month===selMK).sort((a,b)=>b.date.localeCompare(a.date)).map((t,i,arr)=>{
+              const cat=categories.find(c=>c.id===t.category)||{emoji:'📦',name:t.category||'?'};
+              const isIncome=t.type==='income';
+              return(
+                <div key={t.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:i<arr.length-1?'1px solid var(--border)':'none'}}>
+                  <div style={{width:36,height:36,borderRadius:'50%',background:'var(--elevated)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>
+                    {isIncome?'💰':cat.emoji}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{isIncome?(t.incomeType||'Income'):cat.name}{t.note?' — '+t.note:''}</div>
+                    <div style={{display:'flex',alignItems:'center',gap:6,marginTop:3}}>
+                      <span style={{fontSize:11,color:'var(--muted)'}}>{t.date?.slice(5)}</span>
+                      {t.label&&<span className={`badge ${LABEL_COLORS[t.label]||'badge-wants'}`} style={{fontSize:9,padding:'1px 6px'}}>{t.label}</span>}
+                    </div>
+                  </div>
+                  <div style={{textAlign:'right',flexShrink:0}}>
+                    <div style={{fontSize:14,fontWeight:700,fontVariantNumeric:'tabular-nums',color:isIncome?'var(--green)':'var(--text)'}}>{isIncome?'+':''}{fmt(t.amount)}</div>
+                    {t.image&&<div style={{fontSize:10,color:'var(--blue)',marginTop:2}}>📎 receipt</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ):<div className="card"><div className="empty-state"><div style={{fontSize:32}}>📋</div>No transactions this month</div></div>}
+      </>}
+    </div>
+  );
+};
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────
+const SettingsScreen=({salary,setSalary,categories,setCategories,transactions,setTransactions,income,setIncome,investments,setInvestments})=>{
+  const [sbUrl,setSbUrl]=useState(LS.get('sb_url',''));
+  const [sbKey,setSbKey]=useState(LS.get('sb_key',''));
+  const [testSt,setTestSt]=useState('');
+  const [editSal,setEditSal]=useState(String(salary));
+  const [editCat,setEditCat]=useState(null);
+  const [catModal,setCatModal]=useState(false);
+  const [importModal,setImportModal]=useState(false);
+  const [importTxt,setImportTxt]=useState('');
+  const [importPrev,setImportPrev]=useState([]);
+  const [importSt,setImportSt]=useState('');
+  const [notifOn,setNotifOn]=useState(LS.get('notif',true));
+  const [defAcc,setDefAcc]=useState(LS.get('def_acc','Cash'));
+  const [statsModal,setStatsModal]=useState(false);
+  const [salModal,setSalModal]=useState(false);
+  const fileRef=useRef();
+
+  const saveSB=()=>{LS.set('sb_url',sbUrl);LS.set('sb_key',sbKey);_sbClient=null;setTestSt('Saved.');};
+  const testSB=async()=>{
+    setTestSt('Testing...');
+    const sb=getSB();
+    if(!sb){setTestSt('❌ Enter URL and key first');return;}
+    try{const{error}=await sb.from('transactions').select('id').limit(1);setTestSt(error?'❌ '+error.message:'✅ Connected!');}
+    catch(e){setTestSt('❌ '+e.message);}
+  };
+
+  const exportCSV=()=>{
+    const rows=[['Date','Type','Category','Label','Amount','Account','Note','Month']];
+    [...transactions,...income,...investments].forEach(t=>{
+      rows.push([t.date,t.type,t.category||t.incomeType||t.investType||'',t.label||'',t.amount,t.account||'',t.note||'',t.month]);
+    });
+    const a=document.createElement('a');
+    a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
+    a.download=`finance_${todayMK}.csv`;a.click();
+  };
+
+  const handleFile=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      const txt=ev.target.result;setImportTxt(txt);
+      const lines=txt.split('\n').filter(Boolean);
+      const hdrs=lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
+      setImportPrev(lines.slice(1,6).map(line=>{const vals=line.split(',');const o={};hdrs.forEach((h,i)=>o[h]=(vals[i]||'').trim().replace(/"/g,''));return o;}));
+    };
+    r.readAsText(f);
+  };
+
+  const doImport=()=>{
+    try{
+      const lines=importTxt.split('\n').filter(Boolean);
+      const hdrs=lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
+      const txns=[];
+      lines.slice(1).forEach((line,i)=>{
+        const vals=line.split(',');
+        const o={};hdrs.forEach((h,j)=>o[h]=(vals[j]||'').trim().replace(/"/g,''));
+        const ds=o['Date']||o['date']||'';
+        const amtRaw=parseFloat(o['Amount']||o['amount']||'0');
+        if(!ds||isNaN(amtRaw)||amtRaw===0) return;
+        const catRaw=o['Category name']||o['Category']||o['category']||'Other';
+        const catMatch=CATS.find(c=>c.name.toLowerCase()===catRaw.toLowerCase());
+        txns.push({
+          id:'imp'+Date.now()+'_'+i,type:amtRaw<0?'expense':'income',
+          amount:Math.abs(amtRaw),date:ds.includes('T')?ds.split('T')[0]:ds,
+          month:ds.slice(0,7).replace(/\//g,'-'),
+          category:catMatch?catMatch.id:catRaw.toLowerCase().replace(/\s+/g,'_'),
+          note:o['Note']||o['note']||'',account:'Imported',label:'Wants',imported:true,
+        });
+      });
+      setTransactions(p=>{
+        const ex=new Set(p.map(t=>t.date+'_'+t.amount+'_'+(t.category||'')));
+        return [...p,...txns.filter(t=>!ex.has(t.date+'_'+t.amount+'_'+t.category))];
+      });
+      setImportSt(`✅ Imported ${txns.length} transactions`);
+      setTimeout(()=>setImportModal(false),1500);
+    }catch(e){setImportSt('❌ '+e.message);}
+  };
+
+  const SR=({label,value,right,onClick,danger,last})=>(
+    <div className="settings-row" onClick={onClick} style={{cursor:onClick?'pointer':'default',borderBottom:last?'none':'1px solid var(--border)'}}>
+      <span className="settings-label" style={{color:danger?'var(--red)':'var(--text)'}}>{label}</span>
+      {right||(value&&<span className="settings-value">{value}</span>)}
+    </div>
+  );
+
+  return(
+    <div className="screen">
+      <div className="page-header"><div className="page-title">Settings</div></div>
+
+      {/* Supabase */}
+      <div style={{padding:'0 12px'}}>
+        <div style={{fontSize:11,fontWeight:600,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--muted)',padding:'16px 4px 8px'}}>Cloud Sync (Supabase)</div>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:14,marginBottom:4}}>
+          <div className="form-group"><div className="form-label">Supabase URL</div><input className="input-field" value={sbUrl} onChange={e=>setSbUrl(e.target.value)} placeholder="https://xxxx.supabase.co" style={{fontSize:13}}/></div>
+          <div className="form-group" style={{marginBottom:10}}><div className="form-label">Anon Key</div><input className="input-field" value={sbKey} onChange={e=>setSbKey(e.target.value)} type="password" placeholder="eyJhbGci..." style={{fontSize:13}}/></div>
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn btn-primary" style={{flex:1,padding:'10px',fontSize:13}} onClick={saveSB}>Save</button>
+            <button className="btn btn-surface" style={{flex:1,padding:'10px',fontSize:13}} onClick={testSB}>Test Connection</button>
+          </div>
+          {testSt&&<div style={{marginTop:8,fontSize:12,color:testSt.includes('✅')?'var(--green)':testSt.includes('❌')?'var(--red)':'var(--muted)'}}>{testSt}</div>}
+        </div>
+      </div>
+
+      {/* Profile */}
+      <div style={{padding:'0 12px'}}>
+        <div style={{fontSize:11,fontWeight:600,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--muted)',padding:'16px 4px 8px'}}>Profile</div>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',overflow:'hidden'}}>
+          <SR label="Name" value="Sachin" last/>
+        </div>
+        <div style={{marginTop:8,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:14}}>
+          <div className="form-label">Monthly Salary (in-hand)</div>
+          <div style={{display:'flex',gap:8,marginTop:6}}>
+            <input className="input-field" type="number" value={editSal} onChange={e=>setEditSal(e.target.value)} style={{flex:1}}/>
+            <button className="btn btn-primary" style={{padding:'10px 16px'}} onClick={()=>setSalary(parseFloat(editSal)||83000)}>Update</button>
+          </div>
+          <div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>Current: {fmt(salary)}/month from Jun 2026</div>
+        </div>
+      </div>
+
+      {/* Categories */}
+      <div style={{padding:'0 12px'}}>
+        <div style={{fontSize:11,fontWeight:600,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--muted)',padding:'16px 4px 8px'}}>Categories</div>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',overflow:'hidden'}}>
+          {categories.map((cat,i)=>(
+            <div key={cat.id} className="settings-row" onClick={()=>{setEditCat({...cat});setCatModal(true);}} style={{cursor:'pointer',borderBottom:i<categories.length-1?'1px solid var(--border)':'none'}}>
+              <span style={{fontSize:14}}>{cat.emoji} {cat.name}</span>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span className={`badge ${LABEL_COLORS[cat.label]||'badge-wants'}`}>{cat.label}</span>
+                <Icon name="chevR" size={13} color="var(--muted)"/>
+              </div>
+            </div>
+          ))}
+          <div className="settings-row" style={{borderTop:'1px solid var(--border)',borderBottom:'none',cursor:'pointer'}} onClick={()=>{setEditCat({id:'c'+Date.now(),emoji:'📦',name:'',label:'Wants'});setCatModal(true);}}>
+            <span style={{color:'var(--blue)',fontSize:14}}>+ Add New Category</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Preferences */}
+      <div style={{padding:'0 12px'}}>
+        <div style={{fontSize:11,fontWeight:600,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--muted)',padding:'16px 4px 8px'}}>Preferences</div>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',overflow:'hidden'}}>
+          <SR label="Default Account" right={
+            <select value={defAcc} onChange={e=>{setDefAcc(e.target.value);LS.set('def_acc',e.target.value);}} style={{background:'transparent',border:'none',color:'var(--muted)',fontSize:14,outline:'none'}}>
+              {['Cash','ICICI','SBI','UPI','Credit Card'].map(a=><option key={a}>{a}</option>)}
+            </select>
+          }/>
+          <SR label="Coach Notifications" last right={
+            <div className={`toggle ${notifOn?'on':''}`} onClick={()=>{setNotifOn(v=>!v);LS.set('notif',!notifOn);}}/>
+          }/>
+        </div>
+      </div>
+
+      {/* Budget Limits */}
+      <div style={{padding:'0 12px'}}>
+        <div style={{fontSize:11,fontWeight:600,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--muted)',padding:'16px 4px 8px'}}>Recommended Budget Limits</div>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',padding:14}}>
+          <div style={{fontSize:12,color:'var(--muted)',marginBottom:10,lineHeight:1.5}}>Based on your ₹16,395 discretionary income after all fixed obligations.</div>
+          {[['🍔 Food & Drink','Must Have',2500],['🛒 Groceries + Milk','Needs',3500],['⛽ Fuel','Needs',2500],['🛍️ Shopping','Wants',2000],['🚌 Transport','Needs',1500],['💊 Healthcare','Needs',1000],['🎬 Entertainment','Wants',400],['💈 Personal','Wants',300]].map(([c,l,v],i,arr)=>(
+            <div key={c} style={{display:'flex',alignItems:'center',gap:8,padding:'9px 0',borderBottom:i<arr.length-1?'1px solid var(--border)':'none'}}>
+              <span style={{flex:1,fontSize:13}}>{c}</span>
+              <span className={`badge ${LABEL_COLORS[l]}`}>{l}</span>
+              <span style={{fontSize:13,fontWeight:600,fontVariantNumeric:'tabular-nums',color:'var(--text)'}}>{fmt(v)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Data */}
+      <div style={{padding:'0 12px'}}>
+        <div style={{fontSize:11,fontWeight:600,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--muted)',padding:'16px 4px 8px'}}>Data Management</div>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',overflow:'hidden'}}>
+          <SR label="📥 Import Spendee CSV" onClick={()=>setImportModal(true)} right={<Icon name="upload" size={15} color="var(--muted)"/>}/>
+          <SR label="📤 Export All Data as CSV" onClick={exportCSV} right={<Icon name="download" size={15} color="var(--muted)"/>}/>
+          <SR label="📊 Data Stats" onClick={()=>setStatsModal(true)} right={<span style={{color:'var(--muted)',fontSize:13}}>{transactions.length} records</span>}/>
+          <SR label="🗑️ Clear All Transactions" danger last onClick={()=>{if(window.confirm('Delete all data? Cannot be undone.')){setTransactions([]);setIncome([]);setInvestments([]);}}} right={<Icon name="trash" size={15} color="var(--red)"/>}/>
+        </div>
+      </div>
+
+      {/* About */}
+      <div style={{padding:'0 12px'}}>
+        <div style={{fontSize:11,fontWeight:600,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--muted)',padding:'16px 4px 8px'}}>About</div>
+        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--radius)',overflow:'hidden'}}>
+          <SR label="Personal Finance Dashboard" value="v1.0"/>
+          <SR label="Built for" value="Sachin · Jul 2026"/>
+          <SR label="Tracks from" value="July 2026"/>
+          <SR label="Historical data" last value="Oct 2024 – Jun 2026"/>
+        </div>
+      </div>
+
+      <div style={{height:24}}/>
+
+      {/* Modals */}
+      <Modal open={catModal} onClose={()=>setCatModal(false)} title={editCat?.name?'Edit Category':'New Category'}>
+        {editCat&&<>
+          <div style={{display:'grid',gridTemplateColumns:'56px 1fr',gap:8,marginBottom:14}}>
+            <div><div className="form-label">Emoji</div><input className="input-field" value={editCat.emoji} onChange={e=>setEditCat(c=>({...c,emoji:e.target.value}))} style={{textAlign:'center',fontSize:20,padding:'8px 4px'}}/></div>
+            <div><div className="form-label">Name</div><input className="input-field" value={editCat.name} onChange={e=>setEditCat(c=>({...c,name:e.target.value}))} placeholder="Category name"/></div>
+          </div>
+          <div className="form-group"><div className="form-label">Spend Type</div>
+            <select className="select-field" value={editCat.label} onChange={e=>setEditCat(c=>({...c,label:e.target.value}))}>
+              {SPEND_LABELS.map(l=><option key={l}>{l}</option>)}
+            </select>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn btn-primary" style={{flex:1}} onClick={()=>{setCategories(p=>{const ex=p.find(c=>c.id===editCat.id);return ex?p.map(c=>c.id===editCat.id?editCat:c):[...p,editCat];});setCatModal(false);}}>Save</button>
+            {categories.find(c=>c.id===editCat?.id)&&<button className="btn btn-danger" style={{flex:1}} onClick={()=>{setCategories(p=>p.filter(c=>c.id!==editCat.id));setCatModal(false);}}>Delete</button>}
+          </div>
+        </>}
+      </Modal>
+
+      <Modal open={importModal} onClose={()=>setImportModal(false)} title="Import CSV">
+        <div style={{marginBottom:12,fontSize:13,color:'var(--muted)',lineHeight:1.5}}>Supports Spendee export format. Your 2-year history from Spendee will be mapped to the new categories.</div>
+        <div className="form-group"><input type="file" accept=".csv" ref={fileRef} onChange={handleFile} className="input-field" style={{fontSize:13,padding:'10px'}}/></div>
+        {importPrev.length>0&&(
+          <div style={{marginBottom:12}}>
+            <div className="form-label">Preview</div>
+            <div style={{background:'var(--elevated)',borderRadius:'var(--radius-sm)',padding:8,fontSize:10,color:'var(--muted)',overflow:'auto',maxHeight:100}}>
+              {importPrev.map((r,i)=><div key={i} style={{padding:'2px 0',borderBottom:'1px solid var(--border)',wordBreak:'break-all'}}>{JSON.stringify(r)}</div>)}
+            </div>
+          </div>
+        )}
+        {importSt&&<div style={{marginBottom:10,fontSize:13,color:importSt.includes('✅')?'var(--green)':'var(--red)'}}>{importSt}</div>}
+        {importPrev.length>0&&<button className="btn btn-primary" style={{width:'100%'}} onClick={doImport}>Import Now</button>}
+      </Modal>
+
+      <Modal open={statsModal} onClose={()=>setStatsModal(false)} title="Data Stats">
+        {[['Total transactions',transactions.length],['Expense entries',transactions.filter(t=>t.type==='expense').length],['Income entries',income.length],['Investment entries',investments.length],['Months with data',new Set(transactions.map(t=>t.month)).size],['Categories used',new Set(transactions.map(t=>t.category)).size]].map(([k,v])=>(
+          <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+            <span style={{fontSize:14,color:'var(--muted)'}}>{k}</span>
+            <span style={{fontSize:14,fontWeight:700}}>{v}</span>
+          </div>
+        ))}
+      </Modal>
+    </div>
+  );
+};
+
+// ── ROOT ──────────────────────────────────────────────────────────────────
+const App=()=>{
+  const [tab,setTab]=useState('home');
+  const [curMK,setCurMK]=useState(todayMK);
+  const [salary,setSalaryRaw]=useState(LS.get('salary',83000));
+  const [transactions,setTxRaw]=useState(LS.get('transactions',[]));
+  const [income,setIncRaw]=useState(LS.get('income',[]));
+  const [investments,setInvRaw]=useState(LS.get('investments',[]));
+  const [categories,setCatsRaw]=useState(LS.get('categories',CATS));
+  const [emis,setEmisRaw]=useState(LS.get('emis',DEFAULT_EMIS));
+  const [chittis,setChittisRaw]=useState(LS.get('chittis',DEFAULT_CHITTIS));
+
+  const mk=(key,setter)=>v=>{const n=typeof v==='function'?v(LS.get(key,[])):v;LS.set(key,n);setter(n);};
+  const setSalary=v=>{LS.set('salary',v);setSalaryRaw(v);};
+  const setTransactions=mk('transactions',setTxRaw);
+  const setIncome=mk('income',setIncRaw);
+  const setInvestments=mk('investments',setInvRaw);
+  const setCategories=mk('categories',setCatsRaw);
+  const setEmis=mk('emis',setEmisRaw);
+  const setChittis=mk('chittis',setChittisRaw);
+
+  const onAdd=entry=>{
+    if(entry.type==='expense') setTransactions(p=>[...p,entry]);
+    else if(entry.type==='income') setIncome(p=>[...p,entry]);
+    else if(entry.type==='investment') setInvestments(p=>[...p,entry]);
+    else setTransactions(p=>[...p,entry]);
+  };
+
+  const sbOk=!!(LS.get('sb_url','')&&LS.get('sb_key',''));
+
+  const TABS=[
+    {id:'home',label:'Home',icon:'home'},
+    {id:'add',label:'Add',icon:'add'},
+    {id:'loans',label:'Loans',icon:'bank'},
+    {id:'trends',label:'Trends',icon:'trends'},
+    {id:'settings',label:'Settings',icon:'settings'},
+  ];
+
+  return(
+    <div className="app">
+      {!sbOk&&tab!=='settings'&&(
+        <div className="warn-bar">
+          <span>⚠️</span>
+          <span style={{flex:1,fontSize:13}}>Connect Supabase to save data to cloud. <button onClick={()=>setTab('settings')} style={{color:'var(--amber)',fontWeight:600,textDecoration:'underline',background:'none',border:'none',fontSize:13,cursor:'pointer'}}>Open Settings</button></span>
+        </div>
+      )}
+      {tab==='home'&&<HomeScreen transactions={transactions} income={income} emis={emis} chittis={chittis} investments={investments} categories={categories} currentMonth={curMK} setCurrentMonth={setCurMK} salary={salary}/>}
+      {tab==='add'&&<AddScreen categories={categories} setCategories={setCategories} onAdd={onAdd}/>}
+      {tab==='loans'&&<LoansScreen emis={emis} setEmis={setEmis} chittis={chittis} setChittis={setChittis}/>}
+      {tab==='trends'&&<TrendsScreen transactions={transactions} income={income} categories={categories} salary={salary} investments={investments}/>}
+      {tab==='settings'&&<SettingsScreen salary={salary} setSalary={setSalary} categories={categories} setCategories={setCategories} transactions={transactions} setTransactions={setTransactions} income={income} setIncome={setIncome} investments={investments} setInvestments={setInvestments}/>}
+      <div className="tab-bar">
+        {TABS.map(t=>(
+          <button key={t.id} className={`tab ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>
+            <Icon name={t.icon} size={22}/>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
