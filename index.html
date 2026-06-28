@@ -663,7 +663,7 @@ function renderHome(){
   const pace=dom>0?(totalSpent/dom)*daysInMonth:0;
   const nudge=pace>discretionary?'At current pace, overspend by '+fmt(pace-discretionary)+' this month. Cut non-essentials now.'
     :leftMonth<3000?'Only '+fmt(leftMonth)+' left this month. Stick to essentials only.'
-    :fmt(leftMonth)+' available for '+daysLeft+' more days. You're on track!';
+    :fmt(leftMonth)+' available for '+daysLeft+' more days. You\'re on track!';
   document.getElementById('h-nudge').textContent=nudge;
   document.getElementById('coach-text').textContent=nudge;
 
@@ -1132,7 +1132,7 @@ function renderHistory(){
           ${t.image?'<span style="font-size:10px;color:var(--bl)">📎</span>':''}
         </div>
       </div>
-      <div style="font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:${isInc?'var(--gr)':'var(--tx)';flex-shrink:0">${isInc?'+':''}${fmt(t.amount)}</div>
+      <div style="font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:${isInc?'var(--gr)':'var(--tx)'};flex-shrink:0">${isInc?'+':''}${fmt(t.amount)}</div>
     </div>`;
   }).join('');
 }
