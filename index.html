@@ -320,17 +320,26 @@ input,select,textarea{font-family:inherit}
     </div>
     <div id="tr-overview">
       <div class="card">
-        <div class="card-title">Income vs Spending (6 months)</div>
-        <div class="bar-chart" id="bar-chart"></div>
-        <div style="display:flex;gap:4px;justify-content:space-around;margin-top:2px" id="bar-labels"></div>
-        <div style="display:flex;gap:12px;justify-content:center;margin-top:8px">
+        <div class="card-title">Income vs Spending — 6 Months</div>
+        <div class="bar-chart" id="bar-chart" style="height:130px;align-items:flex-end;display:flex;gap:4px;padding:0 4px"></div>
+        <div style="display:flex;gap:12px;justify-content:center;margin-top:10px">
           <span style="font-size:11px;color:var(--mu);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--gr);display:inline-block"></span>Income</span>
           <span style="font-size:11px;color:var(--mu);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--re);display:inline-block"></span>Spent</span>
-          <span style="font-size:11px;color:var(--mu);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--bl);display:inline-block"></span>Gap</span>
+          <span style="font-size:11px;color:var(--mu);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--bl);display:inline-block"></span>Saved</span>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Spend by Label — This Month</div>
+        <div class="card-title">Savings Rate Trend — 6 Months</div>
+        <svg id="line-chart" width="100%" height="120" style="overflow:visible"></svg>
+        <div style="display:flex;justify-content:space-between;padding:4px 8px 0" id="line-labels"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Monthly Expense by Category</div>
+        <canvas id="overview-pie" width="260" height="160" style="display:block;margin:0 auto 10px"></canvas>
+        <div id="overview-pie-legend"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Spend by Type — This Month</div>
         <div id="tr-label-breakdown"></div>
       </div>
     </div>
@@ -342,7 +351,7 @@ input,select,textarea{font-family:inherit}
         <canvas id="cat-pie" width="260" height="160" style="display:block;margin:0 auto 12px"></canvas>
         <div id="cat-legend"></div>
       </div>
-      <div class="card" id="cat-list"></div>
+
     </div>
     <div id="tr-savings" style="display:none">
       <div class="card">
@@ -468,7 +477,7 @@ input,select,textarea{font-family:inherit}
 
 <div class="ov" id="modal-loan"><div class="mo">
   <div class="mh2"></div>
-  <div class="mhd"><span class="mtt">Add Loan / Commitment</span><button onclick="closeModal('modal-loan')">✕</button></div>
+  <div class="mhd"><span class="mtt" id="modal-loan-title">Add Loan / Commitment</span><button onclick="closeModal('modal-loan')">✕</button></div>
   <div class="mb">
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button id="loan-type-emi" class="btn btn-p" style="flex:1;padding:10px;font-size:13px" onclick="setLoanType('emi')">🏦 Loan/EMI</button>
@@ -487,7 +496,11 @@ input,select,textarea{font-family:inherit}
       <div><div class="lbl">End Month</div><input type="month" class="inp" id="l-end"></div>
     </div>
     <div class="fg" id="l-cat-wrap"><div class="lbl">Purpose</div><input class="inp" id="l-cat" placeholder="e.g. Family, CC Clearing"></div>
-    <button class="btn btn-p" style="width:100%;margin-top:4px" onclick="saveLoan()">Add</button>
+    <div class="fg" id="l-balance-wrap"><div class="lbl">Current Balance (optional, for home loan)</div><input class="inp" type="number" id="l-balance" placeholder="e.g. 160000"></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-p" style="flex:1" onclick="saveLoan()">Save</button>
+      <button class="btn btn-d" style="flex:1;display:none" id="del-loan-btn" onclick="deleteLoan()">Delete</button>
+    </div>
   </div>
 </div></div>
 
@@ -565,6 +578,39 @@ const RELIEF=[
   {month:'2031-05',label:'Personal Loan ends',relief:9772,color:'#a371f7'},
   {month:'2031-10',label:'Car Loan ends',relief:14381,color:'#f85149'},
 ];
+
+
+// Spendee category name → our category id mapping
+const SPENDEE_MAP={
+  'food & drink':'food','food':'food','restaurant':'food','dining':'food',
+  'groceries':'grocery','grocery':'grocery','supermarket':'grocery','kirana':'grocery',
+  'milk':'milk','milk & dairy':'milk','dairy':'milk',
+  'fuel':'fuel','petrol':'fuel','diesel':'fuel',
+  'car':'vehicle','vehicle':'vehicle','bike':'vehicle','auto':'vehicle',
+  'transport':'transport','travel':'transport','rapido':'transport','uber':'transport','ola':'transport',
+  'home':'home','house':'home','maintenance':'home',
+  'bills & fees':'bills','bills':'bills','electricity':'bills','jio':'bills','recharge':'bills',
+  'education':'education','school':'education','fees':'education','tuition':'education',
+  'kids':'kids','children':'kids','baby':'kids',
+  'healthcare':'health','health':'health','medical':'health','medicine':'health','doctor':'health',
+  'family & personal':'family','family':'family','personal':'personal',
+  'shopping':'shopping','clothes':'shopping','clothing':'shopping','amazon':'shopping',
+  'entertainment':'entertain','movies':'entertain','streaming':'entertain',
+  'festival':'festival','celebration':'festival',
+  'beauty':'personal','salon':'personal','haircut':'personal',
+  'construction':'construction','building':'construction',
+  'other':'other','miscellaneous':'other',
+};
+function mapSpendeeCategory(raw){
+  if(!raw) return 'other';
+  const key=raw.trim().toLowerCase();
+  if(SPENDEE_MAP[key]) return SPENDEE_MAP[key];
+  // partial match
+  for(const[k,v] of Object.entries(SPENDEE_MAP)){
+    if(key.includes(k)||k.includes(key)) return v;
+  }
+  return 'other';
+}
 
 // ── STATE ──────────────────────────────────────────────────────────────
 let salary=LS.get('salary',83000);
@@ -929,11 +975,14 @@ function loanCard(loan,isChitti){
   const endLabel=endMK?MONTHS[parseInt(endMK.split('-')[1])-1]+' '+endMK.split('-')[0]:'';
   return `<div class="lc">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
-      <div>
+      <div style="flex:1;min-width:0">
         <div style="font-size:16px;font-weight:600">${loan.emoji} ${loan.name}</div>
         <div style="font-size:12px;color:var(--mu);margin-top:2px">${fmt(loan.amount)}/month · due ${loan.dueDay}th${isChitti&&loan.category?' · '+loan.category:''}</div>
       </div>
-      <button onclick="${isChitti?'delChitti':'delEMI'}('${loan.id}')" style="padding:6px;color:var(--mu)">🗑</button>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button onclick="openEditLoan('${loan.id}',${isChitti})" style="padding:6px;color:var(--bl);font-size:16px">✏️</button>
+        <button onclick="${isChitti?'delChitti':'delEMI'}('${loan.id}')" style="padding:6px;color:var(--mu);font-size:16px">🗑</button>
+      </div>
     </div>
     <div class="pb" style="margin-top:10px"><div class="pf" style="width:${Math.max(2,pct)}%;background:${clr}"></div></div>
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin-top:5px">
@@ -982,17 +1031,72 @@ function setLoanType(t){
   document.getElementById('loan-type-chitti').className='btn '+(t==='chitti'?'btn-p':'btn-s');
   document.getElementById('l-cat-wrap').style.display=t==='chitti'?'block':'none';
 }
+let editLoanId=null,editLoanIsChitti=false;
+
+function openEditLoan(id,isChitti){
+  editLoanId=id;editLoanIsChitti=isChitti;
+  const loan=isChitti?chittis.find(c=>c.id===id):emis.find(e=>e.id===id);
+  if(!loan) return;
+  setLoanType(isChitti?'chitti':'emi');
+  document.getElementById('l-emoji').value=loan.emoji||'🏦';
+  document.getElementById('l-name').value=loan.name||'';
+  document.getElementById('l-amt').value=loan.amount||'';
+  document.getElementById('l-day').value=loan.dueDay||10;
+  document.getElementById('l-start').value=loan.startMonth||'';
+  document.getElementById('l-end').value=loan.endMonth||'';
+  document.getElementById('l-cat').value=loan.category||'';
+  if(loan.balanceOverride) document.getElementById('l-balance').value=loan.balanceOverride;
+  document.getElementById('modal-loan-title').textContent='Edit '+( isChitti?'Chitti':'Loan');
+  document.getElementById('del-loan-btn').style.display='flex';
+  document.getElementById('modal-loan').classList.add('open');
+}
+
+function deleteLoan(){
+  if(!editLoanId) return;
+  if(!confirm('Delete this entry?')) return;
+  if(editLoanIsChitti){chittis=chittis.filter(c=>c.id!==editLoanId);save('chittis',chittis);}
+  else{emis=emis.filter(e=>e.id!==editLoanId);save('emis',emis);}
+  closeModal('modal-loan');renderLoans();
+}
+
+function openAddLoan(){
+  editLoanId=null;editLoanIsChitti=false;
+  setLoanType('emi');
+  document.getElementById('l-emoji').value='🏦';
+  document.getElementById('l-name').value='';
+  document.getElementById('l-amt').value='';
+  document.getElementById('l-day').value='10';
+  document.getElementById('l-start').value='';
+  document.getElementById('l-end').value='';
+  document.getElementById('l-cat').value='';
+  document.getElementById('l-balance').value='';
+  document.getElementById('modal-loan-title').textContent='Add Loan / Commitment';
+  document.getElementById('del-loan-btn').style.display='none';
+  document.getElementById('modal-loan').classList.add('open');
+}
+
 function saveLoan(){
   const name=document.getElementById('l-name').value.trim();
   const amt=parseFloat(document.getElementById('l-amt').value);
   const end=document.getElementById('l-end').value;
   if(!name||!amt||!end) return;
-  const entry={id:'l'+Date.now(),name,emoji:document.getElementById('l-emoji').value||'🏦',
+  const bal=parseFloat(document.getElementById('l-balance').value)||undefined;
+  const entry={
+    id:editLoanId||'l'+Date.now(),
+    name,emoji:document.getElementById('l-emoji').value||'🏦',
     amount:amt,dueDay:parseInt(document.getElementById('l-day').value)||10,
     startMonth:document.getElementById('l-start').value||monthKey(today()),
-    endMonth:end,type:addLoanType,category:document.getElementById('l-cat').value};
-  if(addLoanType==='emi'){emis.push(entry);save('emis',emis);}
-  else{chittis.push(entry);save('chittis',chittis);}
+    endMonth:end,type:addLoanType,category:document.getElementById('l-cat').value,
+  };
+  if(bal) entry.balanceOverride=bal;
+  const isChitti=addLoanType==='chitti';
+  if(editLoanId){
+    if(isChitti){chittis=chittis.map(c=>c.id===editLoanId?entry:c);save('chittis',chittis);}
+    else{emis=emis.map(e=>e.id===editLoanId?entry:e);save('emis',emis);}
+  } else {
+    if(isChitti){chittis.push(entry);save('chittis',chittis);}
+    else{emis.push(entry);save('emis',emis);}
+  }
   closeModal('modal-loan');renderLoans();
 }
 
@@ -1024,17 +1128,58 @@ function renderTrends(){
   });
 
   // Bar chart
-  const maxVal=Math.max(...mData.map(d=>Math.max(d.income,d.spent)));
-  const chartH=130;
+  const maxVal=Math.max(...mData.map(d=>Math.max(d.income,d.spent)),1);
+  const chartH=120;
   document.getElementById('bar-chart').innerHTML=mData.map(d=>`
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
       <div style="display:flex;gap:2px;align-items:flex-end;height:${chartH}px">
-        <div style="width:8px;border-radius:3px 3px 0 0;background:var(--gr);height:${Math.max(2,Math.round((d.income/maxVal)*chartH))}px"></div>
-        <div style="width:8px;border-radius:3px 3px 0 0;background:var(--re);height:${Math.max(2,Math.round((d.spent/maxVal)*chartH))}px"></div>
-        <div style="width:8px;border-radius:3px 3px 0 0;background:var(--bl);height:${Math.max(2,Math.round((d.saved/maxVal)*chartH))}px"></div>
+        <div title="${fmt(d.income)}" style="width:9px;border-radius:3px 3px 0 0;background:var(--gr);height:${Math.max(3,Math.round((d.income/maxVal)*chartH))}px"></div>
+        <div title="${fmt(d.spent)}" style="width:9px;border-radius:3px 3px 0 0;background:var(--re);height:${Math.max(3,Math.round((d.spent/maxVal)*chartH))}px"></div>
+        <div title="${fmt(d.saved)}" style="width:9px;border-radius:3px 3px 0 0;background:var(--bl);height:${Math.max(3,Math.round((d.saved/maxVal)*chartH))}px"></div>
       </div>
-      <div style="font-size:9px;color:var(--mu);margin-top:2px">${d.label}</div>
+      <div style="font-size:9px;color:var(--mu)">${d.label}</div>
     </div>`).join('');
+
+  // Line chart - savings rate
+  const rates=mData.map(d=>Math.max(0,Math.round((d.saved/Math.max(1,d.income))*100)));
+  const maxRate=Math.max(...rates,30);
+  const W=300,H=100,pad=10;
+  const pts=rates.map((r,i)=>{
+    const x=pad+(i/(rates.length-1))*(W-pad*2);
+    const y=H-pad-((r/maxRate)*(H-pad*2));
+    return{x,y,r};
+  });
+  const pathD=pts.map((p,i)=>(i===0?'M':'L')+p.x+' '+p.y).join(' ');
+  const areaD=pathD+' L'+pts[pts.length-1].x+' '+(H-pad)+' L'+pts[0].x+' '+(H-pad)+' Z';
+  const svg=document.getElementById('line-chart');
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  svg.innerHTML=
+    '<defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3fb950" stop-opacity="0.3"/><stop offset="100%" stop-color="#3fb950" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="'+areaD+'" fill="url(#lg)"/>'+
+    '<path d="'+pathD+'" fill="none" stroke="#3fb950" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'+
+    pts.map(p=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#3fb950" stroke="#0d1117" stroke-width="2"/><text x="'+p.x+'" y="'+(p.y-8)+'" text-anchor="middle" font-size="9" fill="#8b949e">'+p.r+'%</text>').join('');
+  document.getElementById('line-labels').innerHTML=mData.map(d=>'<span style="font-size:9px;color:var(--mu)">'+d.label+'</span>').join('');
+
+  // Overview pie - current month
+  const mkNow=monthKey(today());
+  const nowTxns=transactions.filter(t=>t.month===mkNow&&t.type==='expense');
+  const nowCatMap={};
+  nowTxns.forEach(t=>{nowCatMap[t.category]=(nowCatMap[t.category]||0)+t.amount;});
+  const nowCatArr=Object.entries(nowCatMap).sort((a,b)=>b[1]-a[1]);
+  if(nowCatArr.length>0){
+    drawPie('overview-pie',nowCatArr.slice(0,8));
+    const nowTotal=nowCatArr.reduce((s,[,v])=>s+v,0);
+    document.getElementById('overview-pie-legend').innerHTML=nowCatArr.slice(0,5).map(([k,v],i)=>{
+      const cat=categories.find(c=>c.id===k)||{emoji:'📦',name:k};
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--bd)">'+
+        '<div style="width:8px;height:8px;border-radius:50%;background:'+PIE_C[i%PIE_C.length]+';flex-shrink:0"></div>'+
+        '<span style="flex:1;font-size:12px">'+cat.emoji+' '+cat.name+'</span>'+
+        '<span style="font-size:12px;font-weight:600;font-variant-numeric:tabular-nums">'+fmt(v)+'</span>'+
+      '</div>';
+    }).join('');
+  } else {
+    document.getElementById('overview-pie-legend').innerHTML='<div class="empty" style="padding:16px">No expenses this month yet</div>';
+  }
 
   // Label breakdown this month
   const mk=monthKey(today());
@@ -1084,10 +1229,8 @@ function renderCatBreakdown(){
         <span style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;min-width:68px;text-align:right">${fmt(v)}</span>
       </div>`;
     }).join('');
-    document.getElementById('cat-list').innerHTML=document.getElementById('cat-legend').innerHTML;
   } else {
     document.getElementById('cat-legend').innerHTML='<div class="empty">No expenses this month</div>';
-    document.getElementById('cat-list').innerHTML='<div class="empty">No expenses this month</div>';
   }
 }
 
