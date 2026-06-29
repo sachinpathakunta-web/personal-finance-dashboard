@@ -21,8 +21,8 @@ button{cursor:pointer;border:none;background:none;color:inherit;font-family:inhe
 input,select,textarea{font-family:inherit}
 ::-webkit-scrollbar{display:none}
 #app{display:flex;flex-direction:column;height:100vh;padding-top:var(--st)}
-.screen{flex:1;overflow-y:auto;padding-bottom:80px;display:none}
-.screen.active{display:block}
+.screen{flex:1;overflow-y:auto;padding-bottom:80px;display:none;width:100%;box-sizing:border-box}
+.screen.active{display:block;width:100%}
 /* Tab bar */
 #tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(22,27,34,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--bd);display:flex;padding-bottom:var(--sb);z-index:100}
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 6px;gap:3px;font-size:10px;color:var(--mu);-webkit-tap-highlight-color:transparent}
@@ -131,7 +131,7 @@ input,select,textarea{font-family:inherit}
 
 
   <!-- SETUP SCREEN -->
-  <div id="scr-setup" class="screen active" style="display:flex;flex-direction:column;justify-content:center;min-height:80vh;padding:24px">
+  <div id="scr-setup" style="display:none;flex-direction:column;justify-content:center;min-height:80vh;padding:24px;flex:1;overflow-y:auto">
     <div style="text-align:center;margin-bottom:32px">
       <div style="font-size:48px;margin-bottom:12px">💰</div>
       <div style="font-size:24px;font-weight:700;margin-bottom:8px">Personal Finance Dashboard</div>
@@ -1658,14 +1658,23 @@ function getLast6(){
 function checkSetup(){
   const name=LS.get('user_name','');
   const sal=LS.get('salary',0);
+  const setup=document.getElementById('scr-setup');
+  const home=document.getElementById('scr-home');
   if(name&&sal>0){
-    document.getElementById('scr-setup').style.display='none';
-    document.getElementById('scr-home').classList.add('active');
-    document.getElementById('scr-home').style.display='block';
+    if(setup) setup.style.display='none';
+    if(home){home.classList.add('active');home.style.display='block';}
   } else {
-    document.getElementById('scr-setup').style.display='flex';
-    document.getElementById('scr-setup').style.flexDirection='column';
-    document.getElementById('scr-setup').style.justifyContent='center';
+    // Hide all tab screens
+    ['home','add','loans','trends','settings'].forEach(n=>{
+      const el=document.getElementById('scr-'+n);
+      if(el){el.classList.remove('active');el.style.display='none';}
+    });
+    if(setup){
+      setup.style.display='flex';
+      setup.style.flexDirection='column';
+      setup.style.justifyContent='center';
+      setup.style.minHeight='100%';
+    }
   }
 }
 
@@ -1682,15 +1691,15 @@ function completeSetup(){
   if(sbUrl) LS.set('sb_url',sbUrl);
   if(sbKey) LS.set('sb_key',sbKey);
   document.getElementById('scr-setup').style.display='none';
-  document.getElementById('scr-home').classList.add('active');
-  renderHome();
+  goTab('home');
+  if(sbUrl&&sbKey) sbLoad();
 }
 
 function skipSetup(){
   LS.set('user_name','Friend');
+  LS.set('salary',0);
   document.getElementById('scr-setup').style.display='none';
-  document.getElementById('scr-home').classList.add('active');
-  renderHome();
+  goTab('home');
 }
 
 function getPeriodMonths(){
@@ -2070,13 +2079,17 @@ function doImport(){
     document.getElementById('import-status').style.color='var(--gr)';
     // Push to Supabase in background
     sbSave('transactions',fresh).catch(e=>console.warn('Supabase import error:',e));
+    // Re-read from localStorage to ensure fresh state
+    transactions=LS.get('transactions',[]);
+    income=LS.get('income',[]);
+    investments=LS.get('investments',[]);
     setTimeout(()=>{
       closeModal('modal-import');
       renderHome();
       renderAnalysis();
       renderTrends();
       renderSettings();
-    },1200);
+    },800);
   }catch(e){
     document.getElementById('import-status').textContent='❌ '+e.message;
     document.getElementById('import-status').style.color='var(--re)';
@@ -2123,6 +2136,11 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 
 // ── INIT ───────────────────────────────────────────────────────────────
 function init(){
+  // Hide all screens first
+  ['home','add','loans','trends','settings'].forEach(name=>{
+    const el=document.getElementById('scr-'+name);
+    if(el){el.classList.remove('active');el.style.display='none';}
+  });
   // Set today's date on all date inputs
   const d=todayStr();
   ['exp-date','inc-date','inv-date','tr-date'].forEach(id=>{
@@ -2130,10 +2148,12 @@ function init(){
   });
   const mk=monthKey(today());
   const el=document.getElementById('inc-month');if(el)el.value=mk;
-
   renderCatGrid();
   checkSetup();
-  if(LS.get('user_name','')&&LS.get('salary',0)>0){renderHome();sbLoad();}
+  if(LS.get('user_name','')&&LS.get('salary',0)>0){
+    renderHome();
+    setTimeout(()=>sbLoad(),500); // slight delay so UI renders first
+  }
 }
 
 init();
