@@ -129,12 +129,38 @@ input,select,textarea{font-family:inherit}
     <span style="flex:1;font-size:13px">Connect Supabase to save data permanently. <button onclick="goTab('settings')" style="color:var(--am);font-weight:600;text-decoration:underline;background:none;border:none;font-size:13px;cursor:pointer">Open Settings</button></span>
   </div>
 
+
+  <!-- SETUP SCREEN -->
+  <div id="scr-setup" class="screen active" style="display:flex;flex-direction:column;justify-content:center;min-height:80vh;padding:24px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:48px;margin-bottom:12px">💰</div>
+      <div style="font-size:24px;font-weight:700;margin-bottom:8px">Personal Finance Dashboard</div>
+      <div style="font-size:14px;color:var(--mu);line-height:1.6">Your personal finance tracker.<br>Let's get you set up in 2 minutes.</div>
+    </div>
+    <div id="setup-step-1">
+      <div class="fg"><div class="lbl">Your Name</div><input class="inp" id="setup-name" placeholder="e.g. Sachin" style="font-size:16px"></div>
+      <div class="fg"><div class="lbl">Monthly Salary (in-hand)</div>
+        <div style="position:relative">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mu);font-size:16px">₹</span>
+          <input class="inp" id="setup-salary" type="number" placeholder="0" style="font-size:16px;padding-left:28px">
+        </div>
+      </div>
+      <div class="fg"><div class="lbl">Supabase URL <span style="color:var(--mu);font-weight:400;text-transform:none">(optional, for cloud sync)</span></div>
+        <input class="inp" id="setup-sb-url" placeholder="https://xxxx.supabase.co" style="font-size:13px">
+      </div>
+      <div class="fg"><div class="lbl">Supabase Anon Key <span style="color:var(--mu);font-weight:400;text-transform:none">(optional)</span></div>
+        <input class="inp" id="setup-sb-key" type="password" placeholder="eyJhbGci..." style="font-size:13px">
+      </div>
+      <button class="btn btn-p" style="width:100%;font-size:16px" onclick="completeSetup()">Get Started →</button>
+      <button onclick="skipSetup()" style="width:100%;text-align:center;padding:14px;font-size:14px;color:var(--mu);margin-top:8px;background:none;border:none;cursor:pointer">Skip for now</button>
+    </div>
+  </div>
   <!-- HOME -->
-  <div id="scr-home" class="screen active">
+  <div id="scr-home" class="screen">
     <div class="ph">
       <div>
         <div style="font-size:11px;color:var(--mu);margin-bottom:1px;font-weight:500">PERSONAL FINANCE DASHBOARD</div>
-        <div class="pt">Hi, Sachin 👋</div>
+        <div class="pt" id="home-greeting">Hi 👋</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
         <button onclick="navMonth(-1)" style="width:32px;height:32px;border-radius:50%;background:var(--el);display:flex;align-items:center;justify-content:center">&#8249;</button>
@@ -445,10 +471,12 @@ input,select,textarea{font-family:inherit}
 
     <div class="stitle">Data Management</div>
     <div style="margin:0 12px 4px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden">
-      <div class="sr" onclick="openImport()" style="cursor:pointer"><span style="font-size:15px">📥 Import Spendee CSV</span><span style="color:var(--mu);font-size:13px">›</span></div>
+      <div class="sr" onclick="sbLoad()" style="cursor:pointer"><span style="font-size:15px">☁️ Sync from Cloud</span><span style="color:var(--mu);font-size:13px">›</span></div>
+      <div class="sr" onclick="openImport()" style="cursor:pointer"><span style="font-size:15px">📥 Import CSV</span><span style="color:var(--mu);font-size:13px">›</span></div>
       <div class="sr" onclick="exportCSV()" style="cursor:pointer"><span style="font-size:15px">📤 Export All Data</span><span style="color:var(--mu);font-size:13px">›</span></div>
       <div class="sr" onclick="showStats()" style="cursor:pointer"><span style="font-size:15px">📊 Data Stats</span><span id="stat-count" style="color:var(--mu);font-size:13px"></span></div>
-      <div class="sr" onclick="clearData()" style="cursor:pointer;border-bottom:none"><span style="font-size:15px;color:var(--re)">🗑️ Clear All Data</span><span style="color:var(--re);font-size:13px">›</span></div>
+      <div class="sr" onclick="clearData()" style="cursor:pointer"><span style="font-size:15px;color:var(--re)">🗑️ Clear All Data</span><span style="color:var(--re);font-size:13px">›</span></div>
+      <div class="sr" onclick="resetProfile()" style="cursor:pointer;border-bottom:none"><span style="font-size:15px;color:var(--re)">👤 Reset Profile (Switch User)</span><span style="color:var(--re);font-size:13px">›</span></div>
     </div>
 
     <div class="stitle">About</div>
@@ -589,25 +617,11 @@ const DEFAULT_CATS=[
   {id:'other',emoji:'📦',name:'Other',label:'Wants'},
 ];
 
-const DEFAULT_EMIS=[
-  {id:'car',name:'Car Loan',emoji:'🚗',amount:14381,dueDay:10,startMonth:'2025-10',endMonth:'2031-10',type:'emi'},
-  {id:'personal',name:'Personal Loan',emoji:'💳',amount:9772,dueDay:5,startMonth:'2024-11',endMonth:'2031-05',type:'emi'},
-  {id:'home',name:'Home Loan',emoji:'🏠',amount:3800,dueDay:10,startMonth:'2020-01',endMonth:'2030-01',type:'emi',balanceOverride:160000},
-  {id:'iphone',name:'iPhone EMI',emoji:'📱',amount:3746,dueDay:2,startMonth:'2024-11',endMonth:'2026-10',type:'emi'},
-];
+const DEFAULT_EMIS=[];
 
-const DEFAULT_CHITTIS=[
-  {id:'ch1',name:'Chitti — Shyam Thatha 2',emoji:'🤝',amount:20000,dueDay:10,startMonth:'2024-08',endMonth:'2027-07',category:'Family'},
-  {id:'ch2',name:'Chitti — Madhavi Aunty',emoji:'💳',amount:8700,dueDay:10,startMonth:'2026-06',endMonth:'2027-07',category:'CC Clearing'},
-];
+const DEFAULT_CHITTIS=[];
 
-const RELIEF=[
-  {month:'2026-10',label:'iPhone EMI ends',relief:3746,color:'#3fb950'},
-  {month:'2027-07',label:'Chitti clears (2 commitments)',relief:28700,color:'#58a6ff'},
-  {month:'2030-01',label:'Home Loan closes',relief:3800,color:'#d29922'},
-  {month:'2031-05',label:'Personal Loan ends',relief:9772,color:'#a371f7'},
-  {month:'2031-10',label:'Car Loan ends',relief:14381,color:'#f85149'},
-];
+const RELIEF=[];
 
 
 // Spendee category + note based remapping
@@ -670,7 +684,7 @@ function mapSpendeeCategory(raw,note){
 }
 
 // ── STATE ──────────────────────────────────────────────────────────────
-let salary=LS.get('salary',83000);
+let salary=LS.get('salary',0);
 let transactions=LS.get('transactions',[]);
 let income=LS.get('income',[]);
 let investments=LS.get('investments',[]);
@@ -686,6 +700,78 @@ let breakdownExpanded=false;
 let importTxt='';
 
 // ── HELPERS ────────────────────────────────────────────────────────────
+
+
+// ── SUPABASE SYNC ──────────────────────────────────────────────────────
+let _sbClient=null;
+function getSB(){
+  const url=LS.get('sb_url',''),key=LS.get('sb_key','');
+  if(!url||!key) return null;
+  if(!_sbClient) _sbClient=supabase.createClient(url,key);
+  return _sbClient;
+}
+
+async function sbSave(table,rows){
+  const sb=getSB();if(!sb||!rows.length) return;
+  try{
+    await sb.from(table).upsert(rows,{onConflict:'id'});
+  }catch(e){console.warn('Supabase save error:',e);}
+}
+
+async function sbLoad(){
+  const sb=getSB();if(!sb) return;
+  try{
+    const [t,i,v,e,c]=await Promise.all([
+      sb.from('transactions').select('*'),
+      sb.from('income').select('*'),
+      sb.from('investments').select('*'),
+      sb.from('emis').select('*'),
+      sb.from('chittis').select('*'),
+    ]);
+    if(t.data&&t.data.length){
+      transactions=t.data;save('transactions',transactions);
+    }
+    if(i.data&&i.data.length){
+      income=i.data;save('income',income);
+    }
+    if(v.data&&v.data.length){
+      investments=v.data;save('investments',investments);
+    }
+    if(e.data&&e.data.length){
+      emis=e.data;save('emis',emis);
+    }
+    if(c.data&&c.data.length){
+      chittis=c.data;save('chittis',chittis);
+    }
+    renderHome();renderAnalysis();renderTrends();renderSettings();
+    console.log('Loaded from Supabase');
+  }catch(e){console.warn('Supabase load error:',e);}
+}
+
+async function sbClearAll(){
+  const sb=getSB();if(!sb) return;
+  try{
+    await Promise.all([
+      sb.from('transactions').delete().neq('id','__none__'),
+      sb.from('income').delete().neq('id','__none__'),
+      sb.from('investments').delete().neq('id','__none__'),
+    ]);
+  }catch(e){console.warn('Supabase clear error:',e);}
+}
+
+// Save single entry to Supabase
+async function sbSaveEntry(entry,table){
+  const sb=getSB();if(!sb) return;
+  try{
+    const row={...entry};
+    // Map app fields to Supabase columns
+    if(row.incomeType){row.income_type=row.incomeType;delete row.incomeType;}
+    if(row.investType){row.invest_type=row.investType;delete row.investType;}
+    if(row.transferTo){row.transfer_to=row.transferTo;delete row.transferTo;}
+    if(row.image&&row.image.length>100000){delete row.image;} // skip large images
+    await sb.from(table).upsert([row],{onConflict:'id'});
+  }catch(e){console.warn('Supabase save error:',e);}
+}
 
 function getLabelForCat(catId){
   const must=['bills','education'];
@@ -740,6 +826,7 @@ function renderHome(){
   const mk=curMonth;
   const d=parseMK(mk);
   document.getElementById('month-label').textContent=MONTHS[d.getMonth()]+' '+d.getFullYear();
+  const gr=document.getElementById('home-greeting');if(gr)gr.textContent='Hi, '+LS.get('user_name','Friend')+' 👋';
 
   const monthTxns=transactions.filter(t=>t.month===mk&&t.type==='expense');
   const monthInc=income.filter(i=>i.month===mk);
@@ -748,7 +835,8 @@ function renderHome(){
 
   const emiOut=emis.reduce((s,e)=>{const p=calcProg(e);return p.remaining>0?s+e.amount:s;},0);
   const chittiOut=chittis.reduce((s,c)=>{const p=calcProg(c);return p.remaining>0?s+c.amount:s;},0);
-  const invOut=5500,jio=706;
+  const invOut=investments.filter(t=>t.month===mk&&t.type==='investment').reduce((s,t)=>s+t.amount,0);
+  const jio=706;
   const totalLocked=emiOut+chittiOut+invOut+jio;
   const discretionary=totalIncome-totalLocked;
   const leftMonth=discretionary-totalSpent;
@@ -1140,7 +1228,7 @@ function saveExpense(){
   const entry={id:'e'+Date.now(),type:'expense',amount:v,date,month:date.slice(0,7),
     category:selCat,label:selLabel,account:document.getElementById('exp-acc').value,
     note:document.getElementById('exp-note').value,image:img&&img.startsWith('data:')?img:null};
-  transactions.push(entry);save('transactions',transactions);
+  transactions.push(entry);save('transactions',transactions);sbSaveEntry(entry,'transactions');
   curAmt='';document.getElementById('add-display').textContent='₹ 0';
   selCat='';renderCatGrid();
   document.getElementById('exp-note').value='';
@@ -1156,7 +1244,7 @@ function saveIncome(){
     month:document.getElementById('inc-month').value||date.slice(0,7),
     incomeType:document.getElementById('inc-type').value,
     note:document.getElementById('inc-note').value};
-  income.push(entry);save('income',income);
+  income.push(entry);save('income',income);sbSaveEntry(entry,'income');
   incAmt='';document.getElementById('inc-display').textContent='₹ 0';
   document.getElementById('inc-note').value='';
   flash('inc-flash','✅ Saved!');
@@ -1169,7 +1257,7 @@ function saveInvestment(){
   const entry={id:'v'+Date.now(),type:'investment',amount:v,date,month:date.slice(0,7),
     investType:document.getElementById('inv-type').value,
     note:document.getElementById('inv-note').value};
-  investments.push(entry);save('investments',investments);
+  investments.push(entry);save('investments',investments);sbSaveEntry(entry,'investments');
   invAmt='';document.getElementById('inv-display').textContent='₹ 0';
   document.getElementById('inv-note').value='';
   flash('inv-flash','✅ Saved!');
@@ -1182,7 +1270,7 @@ function saveTransfer(){
   const entry={id:'t'+Date.now(),type:'transfer',amount:v,date,month:date.slice(0,7),
     transferTo:document.getElementById('tr-to').value,
     note:document.getElementById('tr-note').value};
-  transactions.push(entry);save('transactions',transactions);
+  transactions.push(entry);save('transactions',transactions);sbSaveEntry(entry,'transactions');
   trAmt='';document.getElementById('tr-display').textContent='₹ 0';
   document.getElementById('tr-note').value='';
   flash('tr-flash','✅ Saved!');
@@ -1272,13 +1360,8 @@ function renderAnalysis(){
   </div>`;
 
   // ── INVESTMENTS
-  const invItems=[
-    {name:'PPF',emoji:'🏦',amount:1000,note:'₹500 on 5th + ₹500 on 10th'},
-    {name:'SSY — Vedaswi',emoji:'👧',amount:1000,note:'Auto-debit 10th'},
-    {name:'Vedaswi SIP',emoji:'📈',amount:1500,note:'MF · Since Apr 2026'},
-    {name:'Group Savings',emoji:'🤝',amount:2000,note:'5th every month'},
-  ];
-  const invTotal=invItems.reduce((s,i)=>s+i.amount,0);
+  const invItems=investments.filter(t=>t.type==='investment').reduce((acc,t)=>{const ex=acc.find(x=>x.name===t.investType);if(ex){ex.accumulated=(ex.accumulated||0)+t.amount;}else{acc.push({name:t.investType||'Investment',emoji:'📈',amount:0,note:t.note||'',accumulated:t.amount});}return acc;},[]);
+  const invTotal=investments.filter(t=>t.month===mk&&t.type==='investment').reduce((s,t)=>s+t.amount,0);
   html+=sectionHeader('📈 Investments & Savings',fmt(invTotal)+'/mo','var(--gr)');
   invItems.forEach(inv=>{
     const logged=investments.filter(x=>x.investType&&x.investType.toLowerCase().includes(inv.name.toLowerCase().split(' ')[0]));
@@ -1544,11 +1627,11 @@ function saveLoan(){
   if(bal) entry.balanceOverride=bal;
   const isChitti=addLoanType==='chitti';
   if(editLoanId){
-    if(isChitti){chittis=chittis.map(c=>c.id===editLoanId?entry:c);save('chittis',chittis);}
-    else{emis=emis.map(e=>e.id===editLoanId?entry:e);save('emis',emis);}
+    if(isChitti){chittis=chittis.map(c=>c.id===editLoanId?entry:c);save('chittis',chittis);sbSaveEntry(entry,'chittis');}
+    else{emis=emis.map(e=>e.id===editLoanId?entry:e);save('emis',emis);sbSaveEntry(entry,'emis');}
   } else {
-    if(isChitti){chittis.push(entry);save('chittis',chittis);}
-    else{emis.push(entry);save('emis',emis);}
+    if(isChitti){chittis.push(entry);save('chittis',chittis);sbSaveEntry(entry,'chittis');}
+    else{emis.push(entry);save('emis',emis);sbSaveEntry(entry,'emis');}
   }
   closeModal('modal-loan');renderLoans();
 }
@@ -1568,6 +1651,46 @@ function trendTab(t,el){
 
 function getLast6(){
   return Array.from({length:6},(_,i)=>{const d=new Date(today().getFullYear(),today().getMonth()-5+i,1);return monthKey(d);});
+}
+
+
+// ── FIRST TIME SETUP ───────────────────────────────────────────────────
+function checkSetup(){
+  const name=LS.get('user_name','');
+  const sal=LS.get('salary',0);
+  if(name&&sal>0){
+    document.getElementById('scr-setup').style.display='none';
+    document.getElementById('scr-home').classList.add('active');
+    document.getElementById('scr-home').style.display='block';
+  } else {
+    document.getElementById('scr-setup').style.display='flex';
+    document.getElementById('scr-setup').style.flexDirection='column';
+    document.getElementById('scr-setup').style.justifyContent='center';
+  }
+}
+
+function completeSetup(){
+  const name=document.getElementById('setup-name').value.trim();
+  const sal=parseFloat(document.getElementById('setup-salary').value)||0;
+  const sbUrl=document.getElementById('setup-sb-url').value.trim();
+  const sbKey=document.getElementById('setup-sb-key').value.trim();
+  if(!name){document.getElementById('setup-name').focus();return;}
+  if(!sal){document.getElementById('setup-salary').focus();return;}
+  LS.set('user_name',name);
+  LS.set('salary',sal);
+  salary=sal;
+  if(sbUrl) LS.set('sb_url',sbUrl);
+  if(sbKey) LS.set('sb_key',sbKey);
+  document.getElementById('scr-setup').style.display='none';
+  document.getElementById('scr-home').classList.add('active');
+  renderHome();
+}
+
+function skipSetup(){
+  LS.set('user_name','Friend');
+  document.getElementById('scr-setup').style.display='none';
+  document.getElementById('scr-home').classList.add('active');
+  renderHome();
 }
 
 function getPeriodMonths(){
@@ -1624,7 +1747,7 @@ function renderTrends(){
     const sp=txns.reduce((s,t)=>s+t.amount,0);
     const eo=emis.reduce((s,e)=>{const p=calcProg(e);return p.remaining>0?s+e.amount:s;},0);
     const co=chittis.reduce((s,c)=>{const p=calcProg(c);return p.remaining>0?s+c.amount:s;},0);
-    const io=5500,jio=706;
+    const io=investments.filter(t=>t.month===mk&&t.type==='investment').reduce((s,t)=>s+t.amount,0),jio=706;
     const saved=Math.max(0,ti-sp-eo-co-io-jio);
     const short=months.length>6;
     const label=short?MONTHS[parseInt(mk.split('-')[1])-1].slice(0,1)+"'"+mk.split('-')[0].slice(2):MONTHS[parseInt(mk.split('-')[1])-1];
@@ -1802,18 +1925,24 @@ function renderSettings(){
 }
 
 function saveSB(){
-  LS.set('sb_url',document.getElementById('sb-url').value);
-  LS.set('sb_key',document.getElementById('sb-key').value);
-  document.getElementById('sb-status').textContent='✅ Config saved.';
+  LS.set('sb_url',document.getElementById('sb-url').value.trim());
+  LS.set('sb_key',document.getElementById('sb-key').value.trim());
+  _sbClient=null;
+  document.getElementById('sb-status').textContent='✅ Config saved. Tap Test Connection to verify.';
 }
 
 async function testSB(){
-  const url=LS.get('sb_url',''),key=LS.get('sb_key','');
-  if(!url||!key){document.getElementById('sb-status').textContent='❌ Enter URL and key first';return;}
   document.getElementById('sb-status').textContent='Testing...';
+  _sbClient=null; // reset client to pick up new keys
+  const sb=getSB();
+  if(!sb){document.getElementById('sb-status').textContent='❌ Enter URL and key first';return;}
   try{
-    const r=await fetch(url+'/rest/v1/transactions?select=id&limit=1',{headers:{'apikey':key,'Authorization':'Bearer '+key}});
-    document.getElementById('sb-status').textContent=r.ok?'✅ Connected!':'❌ Error: '+r.status;
+    const {error}=await sb.from('transactions').select('id').limit(1);
+    if(error){document.getElementById('sb-status').textContent='❌ '+error.message;}
+    else{
+      document.getElementById('sb-status').textContent='✅ Connected! Loading data...';
+      sbLoad();
+    }
   }catch(e){document.getElementById('sb-status').textContent='❌ '+e.message;}
 }
 
@@ -1907,32 +2036,52 @@ function doImport(){
     const hdrs=lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
     const txns=[];
     lines.slice(1).forEach((line,i)=>{
-      const vals=line.split(',');
+      const vals=[];let cur='',inQ=false;
+      for(const ch of line){if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){vals.push(cur);cur='';}else cur+=ch;}
+      vals.push(cur);
       const o={};hdrs.forEach((h,j)=>o[h]=(vals[j]||'').trim().replace(/"/g,''));
-      const ds=o['Date']||o['date']||'';
-      const amtRaw=parseFloat(o['Amount']||o['amount']||'0');
+      const ds=o['date']||o['Date']||'';
+      const amtRaw=parseFloat(o['amount']||o['Amount']||'0');
       if(!ds||isNaN(amtRaw)||amtRaw===0) return;
-      const catRaw=o['Category name']||o['Category']||o['category']||'Other';
-      const catMatch=categories.find(c=>c.name.toLowerCase()===catRaw.toLowerCase());
-      txns.push({id:'imp'+Date.now()+'_'+i,type:amtRaw<0?'expense':'income',
-        amount:Math.abs(amtRaw),date:ds.includes('T')?ds.split('T')[0]:ds,
-        month:ds.slice(0,7).replace(/\//g,'-'),
-        category:catMatch?catMatch.id:catRaw.toLowerCase().replace(/\s+/g,'_'),
-        note:o['Note']||o['note']||'',account:'Imported',label:getLabelForCat(catMatch?catMatch.id:mapSpendeeCategory(catRaw,o['Note']||o['note']||'')),imported:true});
+      let catId=o['category']||'';
+      let label=o['label']||'';
+      const note=o['note']||o['Note']||'';
+      const type=o['type']||'expense';
+      if(!catId){
+        const catRaw=o['Category name']||o['Category']||'Other';
+        const catMatch=categories.find(c=>c.name.toLowerCase()===catRaw.toLowerCase());
+        catId=catMatch?catMatch.id:mapSpendeeCategory(catRaw,note);
+      }
+      if(!label) label=getLabelForCat(catId);
+      txns.push({
+        id:o['id']||('imp'+Date.now()+'_'+i),
+        type,amount:Math.abs(amtRaw),
+        date:ds.includes('T')?ds.split('T')[0]:ds,
+        month:ds.slice(0,7),
+        category:catId,label,note,
+        account:o['account']||'Imported',imported:true,
+      });
     });
     const ex=new Set(transactions.map(t=>t.date+'_'+t.amount+'_'+(t.category||'')));
     const fresh=txns.filter(t=>!ex.has(t.date+'_'+t.amount+'_'+t.category));
     transactions=[...transactions,...fresh];
     save('transactions',transactions);
-    document.getElementById('import-status').textContent='✅ Imported '+fresh.length+' transactions';
+    document.getElementById('import-status').textContent='✅ Imported '+fresh.length+' of '+txns.length+' transactions';
     document.getElementById('import-status').style.color='var(--gr)';
-    setTimeout(()=>closeModal('modal-import'),1500);
+    // Push to Supabase in background
+    sbSave('transactions',fresh).catch(e=>console.warn('Supabase import error:',e));
+    setTimeout(()=>{
+      closeModal('modal-import');
+      renderHome();
+      renderAnalysis();
+      renderTrends();
+      renderSettings();
+    },1200);
   }catch(e){
     document.getElementById('import-status').textContent='❌ '+e.message;
     document.getElementById('import-status').style.color='var(--re)';
   }
 }
-
 function openImport(){document.getElementById('modal-import').classList.add('open');}
 
 function showStats(){
@@ -1950,13 +2099,23 @@ function showStats(){
   document.getElementById('modal-stats').classList.add('open');
 }
 
+
+function resetProfile(){
+  if(!confirm('This will clear your profile (name, salary, Supabase config). Data stays. Continue?')) return;
+  ['user_name','salary','sb_url','sb_key'].forEach(k=>localStorage.removeItem(k));
+  salary=0;_sbClient=null;
+  document.getElementById('scr-home').classList.remove('active');
+  checkSetup();
+}
+
 function clearData(){
-  if(!confirm('Delete all transactions, income and investments? Cannot be undone.')) return;
+  if(!confirm('Delete ALL data (transactions, income, investments)? This cannot be undone.')) return;
   transactions=[];income=[];investments=[];
   ['transactions','income','investments'].forEach(k=>localStorage.removeItem(k));
-  renderSettings();
-  renderHome();
-  alert('All data cleared.');
+  sbClearAll().then(()=>{
+    renderHome();renderAnalysis();renderTrends();renderSettings();
+    alert('All data cleared from device and cloud.');
+  });
 }
 
 // ── MODALS ─────────────────────────────────────────────────────────────
@@ -1973,7 +2132,8 @@ function init(){
   const el=document.getElementById('inc-month');if(el)el.value=mk;
 
   renderCatGrid();
-  renderHome();
+  checkSetup();
+  if(LS.get('user_name','')&&LS.get('salary',0)>0){renderHome();sbLoad();}
 }
 
 init();
