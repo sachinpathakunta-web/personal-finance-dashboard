@@ -21,8 +21,8 @@ button{cursor:pointer;border:none;background:none;color:inherit;font-family:inhe
 input,select,textarea{font-family:inherit}
 ::-webkit-scrollbar{display:none}
 #app{display:flex;flex-direction:column;height:100vh;padding-top:var(--st)}
-.screen{flex:1;overflow-y:auto;padding-bottom:80px;display:none;width:100%;box-sizing:border-box}
-.screen.active{display:block;width:100%}
+.screen{flex:1;overflow-y:auto;padding-bottom:80px;width:100%;box-sizing:border-box}
+.screen.active{display:block}
 /* Tab bar */
 #tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(22,27,34,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--bd);display:flex;padding-bottom:var(--sb);z-index:100}
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 6px;gap:3px;font-size:10px;color:var(--mu);-webkit-tap-highlight-color:transparent}
@@ -801,19 +801,25 @@ function calcProg(loan){
 
 // ── NAVIGATION ─────────────────────────────────────────────────────────
 function goTab(id){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const names=['home','add','loans','trends','settings'];
+  names.forEach(n=>{
+    const el=document.getElementById('scr-'+n);
+    if(el){el.style.display='none';el.classList.remove('active');}
+  });
+  const setup=document.getElementById('scr-setup');
+  if(setup) setup.style.display='none';
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('scr-'+id).classList.add('active');
-  const tabs=['home','add','loans','trends','settings'];
-  const idx=tabs.indexOf(id);
-  document.querySelectorAll('.tab')[idx].classList.add('active');
+  const target=document.getElementById('scr-'+id);
+  if(target){target.style.display='block';target.classList.add('active');}
+  const idx=names.indexOf(id);
+  if(idx>=0) document.querySelectorAll('.tab')[idx].classList.add('active');
   if(id==='home') renderHome();
-  if(id==='loans') renderLoans();
+  if(id==='add') renderCatGrid();
+  if(id==='loans') renderAnalysis();
   if(id==='trends') renderTrends();
   if(id==='settings') renderSettings();
-  document.getElementById('scr-'+id).scrollTop=0;
+  if(target) target.scrollTop=0;
 }
-
 function navMonth(dir){
   const[y,m]=curMonth.split('-').map(Number);
   const d=new Date(y,m-1+dir,1);
