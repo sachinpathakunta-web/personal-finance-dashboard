@@ -426,15 +426,19 @@ input,select,textarea{font-family:inherit}
   <div id="scr-settings" class="screen">
     <div class="ph"><div class="pt">Settings</div></div>
 
-    <div class="stitle">Cloud Sync (Supabase)</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px">
+      <div class="stitle" style="padding:0;margin:0">☁️ Cloud Sync (Supabase)</div>
+      <div id="sb-badge" style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(63,185,80,.15);color:var(--gr);display:none">● Connected</div>
+    </div>
     <div style="margin:0 12px 4px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:14px">
       <div class="fg"><div class="lbl">Supabase URL</div><input class="inp" id="sb-url" placeholder="https://xxxx.supabase.co" style="font-size:13px"></div>
       <div class="fg" style="margin-bottom:10px"><div class="lbl">Anon Key</div><input class="inp" id="sb-key" type="password" placeholder="eyJhbGci..." style="font-size:13px"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-p" style="flex:1;padding:10px;font-size:13px" onclick="saveSB()">Save</button>
-        <button class="btn btn-s" style="flex:1;padding:10px;font-size:13px" onclick="testSB()">Test Connection</button>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn btn-p" style="flex:1;padding:12px;font-size:14px;font-weight:700" onclick="saveSB()">💾 Save</button>
+        <button class="btn btn-s" style="flex:1;padding:12px;font-size:14px;font-weight:700" onclick="testSB()">🔌 Test Connection</button>
       </div>
-      <div id="sb-status" style="margin-top:8px;font-size:12px;color:var(--mu)"></div>
+      <button class="btn btn-s" style="width:100%;padding:10px;font-size:13px" onclick="sbLoad()">☁️ Sync from Cloud</button>
+      <div id="sb-status" style="margin-top:8px;font-size:13px;font-weight:500;min-height:20px"></div>
     </div>
 
     <div class="stitle">Profile</div>
@@ -1920,6 +1924,9 @@ function renderHistory(){
 function renderSettings(){
   document.getElementById('sb-url').value=LS.get('sb_url','');
   document.getElementById('sb-key').value=LS.get('sb_key','');
+  // Show connected badge if credentials exist
+  const badge=document.getElementById('sb-badge');
+  if(badge) badge.style.display=(LS.get('sb_url','')&&LS.get('sb_key',''))?'block':'none';
   document.getElementById('sal-inp').value=salary;
   document.getElementById('sal-current').textContent='Current: '+fmt(salary)+'/month';
   document.getElementById('stat-count').textContent=transactions.length+' records';
@@ -1958,18 +1965,50 @@ function saveSB(){
 }
 
 async function testSB(){
-  document.getElementById('sb-status').textContent='Testing...';
-  _sbClient=null; // reset client to pick up new keys
-  const sb=getSB();
-  if(!sb){document.getElementById('sb-status').textContent='❌ Enter URL and key first';return;}
+  const urlVal=document.getElementById('sb-url').value.trim();
+  const keyVal=document.getElementById('sb-key').value.trim();
+  const status=document.getElementById('sb-status');
+  if(!urlVal||!keyVal){status.textContent='\u274c Enter URL and key first';status.style.color='var(--re)';return;}
+  LS.set('sb_url',urlVal);LS.set('sb_key',keyVal);_sbClient=null;
+  status.textContent='Testing...';status.style.color='var(--mu)';
   try{
-    const {error}=await sb.from('transactions').select('id').limit(1);
-    if(error){document.getElementById('sb-status').textContent='❌ '+error.message;}
-    else{
-      document.getElementById('sb-status').textContent='✅ Connected! Loading data...';
-      sbLoad();
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),8000);
+    const baseUrl=urlVal.replace(/\/+$/,'');
+    const r=await fetch(baseUrl+'/rest/v1/transactions?select=id&limit=1',{
+      signal:controller.signal,
+      headers:{
+        'apikey':keyVal,
+        'Authorization':'Bearer '+keyVal,
+        'Content-Type':'application/json'
+      }
+    });
+    clearTimeout(timer);
+    if(r.ok||r.status===200||r.status===406){
+      status.textContent='\u2705 Connected! Tables found.';
+      status.style.color='var(--gr)';
+      const badge=document.getElementById('sb-badge');
+      if(badge) badge.style.display='block';
+      setTimeout(()=>sbLoad(),600);
+    } else if(r.status===401||r.status===403){
+      status.textContent='\u274c Invalid API key ('+r.status+')';
+      status.style.color='var(--re)';
+    } else if(r.status===404){
+      status.textContent='\u274c Table not found - run the SQL first ('+r.status+')';
+      status.style.color='var(--re)';
+    } else {
+      const txt=await r.text();
+      status.textContent='\u274c Error '+r.status+': '+txt.slice(0,80);
+      status.style.color='var(--re)';
     }
-  }catch(e){document.getElementById('sb-status').textContent='❌ '+e.message;}
+  }catch(e){
+    if(e.name==='AbortError'){
+      status.textContent='\u274c Timed out - check your URL';
+    } else {
+      status.textContent='\u274c '+e.message;
+    }
+    status.style.color='var(--re)';
+  }
 }
 
 function updateSalary(){
