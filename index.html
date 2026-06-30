@@ -168,6 +168,7 @@ input,select,textarea{font-family:inherit}
         <button onclick="navMonth(1)" style="width:32px;height:32px;border-radius:50%;background:var(--el);display:flex;align-items:center;justify-content:center">&#8250;</button>
       </div>
     </div>
+    <div id="data-range-banner" style="display:none;align-items:center;justify-content:space-between;margin:0 12px 8px;padding:8px 12px;background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.2);border-radius:8px"></div>
     <div class="pulse">
       <div class="pcard"><div class="pval" id="h-income" style="color:var(--gr)">₹0</div><div class="plbl">Income</div></div>
       <div class="pcard"><div class="pval" id="h-spent">₹0</div><div class="plbl">Spent</div></div>
@@ -1089,7 +1090,12 @@ function renderHomeTxnList(mainFilter,catFilter){
 
   const list=document.getElementById('home-txn-list');
   if(!list) return;
-  if(!txns.length){list.innerHTML='<div class="empty" style="padding:20px">No transactions found</div>';return;}
+  if(!txns.length){
+    const allMonths=[...new Set(transactions.map(t=>t.month))].sort();
+    const hint=allMonths.length>0?'Your data is in '+MONTHS[parseInt(allMonths[allMonths.length-1].split('-')[1])-1]+' '+allMonths[allMonths.length-1].split('-')[0]+' — use ← to navigate back':'Tap + to add your first expense';
+    list.innerHTML='<div class="empty" style="padding:20px"><div style="font-size:32px">📊</div><div>No entries for '+MONTHS[parseInt(curMonth.split('-')[1])-1]+' '+curMonth.split('-')[0]+'</div><div style="font-size:12px;margin-top:6px;color:var(--mu)">'+hint+'</div></div>';
+    return;
+  }
 
   list.innerHTML=txns.map(t=>{
     const cat=categories.find(c=>c.id===t.category)||{emoji:'📦',name:t.category||'?'};
@@ -1708,6 +1714,11 @@ function skipSetup(){
   goTab('home');
 }
 
+
+function jumpToLatest(){
+  const months=[...new Set(transactions.map(t=>t.month))].filter(Boolean).sort();
+  if(months.length>0){curMonth=months[months.length-1];renderHome();}
+}
 function getPeriodMonths(){
   const sel=document.getElementById('trend-period');
   const val=sel?sel.value:'6';
