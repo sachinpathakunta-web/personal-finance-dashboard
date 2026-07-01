@@ -332,6 +332,33 @@ input,select,textarea{font-family:inherit}
     </div>
   </div>
 
+  <!-- Edit Loans -->
+  <div id="add-edit-loans" style="display:none;padding:0 12px">
+    <div style="margin-bottom:12px;padding:10px 12px;background:var(--el);border-radius:var(--rs);font-size:13px;color:var(--mu);line-height:1.5">
+      Add, edit or delete your loans and EMIs.
+    </div>
+    <div id="txn-emi-list"></div>
+    <button class="btn btn-p" style="width:100%;margin-top:8px" onclick="openAddLoan('emi')">+ Add New Loan / EMI</button>
+  </div>
+
+  <!-- Edit Chitti -->
+  <div id="add-edit-chitti" style="display:none;padding:0 12px">
+    <div style="margin-bottom:12px;padding:10px 12px;background:var(--el);border-radius:var(--rs);font-size:13px;color:var(--mu);line-height:1.5">
+      Add, edit or delete your Chitti commitments.
+    </div>
+    <div id="txn-chitti-list"></div>
+    <button class="btn btn-p" style="width:100%;margin-top:8px" onclick="openAddLoan('chitti')">+ Add New Chitti</button>
+  </div>
+
+  <!-- Edit Investments -->
+  <div id="add-edit-invest" style="display:none;padding:0 12px">
+    <div style="margin-bottom:12px;padding:10px 12px;background:var(--el);border-radius:var(--rs);font-size:13px;color:var(--mu);line-height:1.5">
+      Log your investment entries. Add one per payment made.
+    </div>
+    <div id="txn-inv-list"></div>
+    <button class="btn btn-p" style="width:100%;margin-top:8px" onclick="openAddInvModal()">+ Log Investment</button>
+  </div>
+
   <!-- ANALYSIS -->
   <div id="scr-loans" class="screen">
     <div class="ph"><div class="pt">Analysis</div></div>
@@ -1533,9 +1560,11 @@ function renderTxnInvests(){
     </div>`).join(''):'<div class="empty">No investment entries yet</div>';
 }
 function openAddInvModal(){
-  // Switch to investment tab
-  document.querySelectorAll('#scr-add .pill').forEach(p=>p.classList.remove('active'));
-  addTab('investment',document.querySelectorAll('#scr-add .pill')[2]);
+  const pills=document.querySelectorAll('#scr-add .pill');
+  // Find investment pill
+  let invPill=null;
+  pills.forEach(p=>{if(p.textContent.includes('Investment')) invPill=p;});
+  if(invPill) addTab('investment',invPill);
 }
 function delEMI(id){if(confirm('Remove this EMI?')){emis=emis.filter(e=>e.id!==id);save('emis',emis);renderTxnEMIs();renderAnalysis();}}
 function delChitti(id){if(confirm('Remove this Chitti?')){chittis=chittis.filter(c=>c.id!==id);save('chittis',chittis);renderTxnChittis();renderAnalysis();}}
@@ -1576,7 +1605,21 @@ function loanCard(loan,isChitti){
 function delEMI(id){if(confirm('Remove this EMI?')){emis=emis.filter(e=>e.id!==id);save('emis',emis);renderEMIs();}}
 function delChitti(id){if(confirm('Remove this Chitti?')){chittis=chittis.filter(c=>c.id!==id);save('chittis',chittis);renderChittis();}}
 
-function openAddLoan(){document.getElementById('modal-loan').classList.add('open');}
+function openAddLoan(type){
+  editLoanId=null;editLoanIsChitti=false;
+  setLoanType(type||'emi');
+  document.getElementById('l-emoji').value='🏦';
+  document.getElementById('l-name').value='';
+  document.getElementById('l-amt').value='';
+  document.getElementById('l-day').value='10';
+  document.getElementById('l-start').value='';
+  document.getElementById('l-end').value='';
+  document.getElementById('l-cat').value='';
+  document.getElementById('l-balance').value='';
+  document.getElementById('modal-loan-title').textContent='Add '+(type==='chitti'?'Chitti':'Loan / EMI');
+  document.getElementById('del-loan-btn').style.display='none';
+  document.getElementById('modal-loan').classList.add('open');
+}
 function setLoanType(t){
   addLoanType=t;
   document.getElementById('loan-type-emi').className='btn '+(t==='emi'?'btn-p':'btn-s');
