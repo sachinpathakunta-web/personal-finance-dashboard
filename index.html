@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Finance">
 <meta name="theme-color" content="#0d1117">
 <title>Personal Finance Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -20,45 +21,36 @@ html,body{height:100%;background:var(--bg);color:var(--tx);font-family:-apple-sy
 button{cursor:pointer;border:none;background:none;color:inherit;font-family:inherit}
 input,select,textarea{font-family:inherit}
 ::-webkit-scrollbar{display:none}
-#app{display:flex;flex-direction:column;height:100vh;padding-top:var(--st)}
-.screen{flex:1;overflow-y:auto;padding-bottom:80px;width:100%;box-sizing:border-box}
+#app{display:flex;flex-direction:column;height:100vh;padding-top:var(--st);overflow:hidden}
+.screen{flex:1;overflow-y:auto;padding-bottom:80px;width:100%;box-sizing:border-box;display:none}
 .screen.active{display:block}
-/* Tab bar */
 #tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(22,27,34,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--bd);display:flex;padding-bottom:var(--sb);z-index:100}
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 6px;gap:3px;font-size:10px;color:var(--mu);-webkit-tap-highlight-color:transparent}
 .tab.active{color:var(--bl)}
 .tab svg{width:22px;height:22px}
-/* Cards */
 .card{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin:0 12px 12px}
 .card-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);margin-bottom:12px}
-/* Buttons */
 .btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:14px 20px;border-radius:var(--r);font-size:15px;font-weight:600;-webkit-tap-highlight-color:transparent;cursor:pointer;border:none}
 .btn:active{opacity:.8}
 .btn-p{background:var(--bl);color:#fff}
 .btn-s{background:var(--el);color:var(--tx)}
 .btn-d{background:rgba(248,81,73,.15);color:var(--re)}
-/* Inputs */
 .inp{background:var(--el);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;font-size:15px;color:var(--tx);width:100%;outline:none}
 .inp:focus{border-color:var(--bl)}
 .sel{background:var(--el);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;font-size:15px;color:var(--tx);width:100%;outline:none;appearance:none;-webkit-appearance:none}
 .lbl{font-size:12px;font-weight:600;color:var(--mu);margin-bottom:6px;display:block;letter-spacing:.04em;text-transform:uppercase}
 .fg{margin-bottom:14px}
-/* Page header */
 .ph{padding:16px 16px 8px;display:flex;align-items:center;justify-content:space-between}
 .pt{font-size:22px;font-weight:700;letter-spacing:-.3px}
-/* Badges */
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
 .bm{background:rgba(248,81,73,.15);color:var(--re)}
 .bn{background:rgba(210,153,34,.15);color:var(--am)}
 .bw{background:rgba(88,166,255,.15);color:var(--bl)}
-/* Progress */
 .pb{height:6px;background:var(--el);border-radius:3px;overflow:hidden}
 .pf{height:100%;border-radius:3px;transition:width .4s}
-/* Tab pills */
 .pills{display:flex;gap:6px;overflow-x:auto;padding:0 12px 12px;scrollbar-width:none}
 .pill{padding:7px 14px;border-radius:20px;font-size:13px;font-weight:500;white-space:nowrap;background:var(--el);color:var(--mu);border:1px solid var(--bd);-webkit-tap-highlight-color:transparent;flex-shrink:0;cursor:pointer}
 .pill.active{background:var(--bl);color:#fff;border-color:var(--bl)}
-/* Modal */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:flex-end}
 .ov.open{display:flex}
 .mo{background:var(--sur);border-radius:var(--r) var(--r) 0 0;width:100%;max-height:92vh;overflow-y:auto;padding-bottom:calc(var(--sb) + 8px)}
@@ -66,95 +58,63 @@ input,select,textarea{font-family:inherit}
 .mhd{padding:0 16px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bd);margin-bottom:16px}
 .mtt{font-size:17px;font-weight:600}
 .mb{padding:0 16px}
-/* Keypad */
 .kp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:340px;margin:0 auto}
 .key{height:64px;background:var(--el);border-radius:var(--r);font-size:22px;font-weight:500;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;cursor:pointer;border:none;color:var(--tx)}
 .key:active{background:var(--bd)}
 .amt{font-size:42px;font-weight:700;text-align:center;padding:20px 16px 16px;font-variant-numeric:tabular-nums;letter-spacing:-1px}
-/* Category grid */
 .cg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .cb{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;background:var(--el);border-radius:var(--rs);font-size:10px;color:var(--mu);border:2px solid transparent;min-height:64px;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .cb .em{font-size:22px;line-height:1}
 .cb.sel{border-color:var(--bl);color:var(--bl);background:rgba(88,166,255,.1)}
-/* Settings rows */
 .sr{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--sur);border-bottom:1px solid var(--bd)}
-/* Toggle */
 .tog{width:44px;height:26px;background:var(--el);border-radius:13px;position:relative;transition:background .2s;cursor:pointer;border:1px solid var(--bd);flex-shrink:0}
 .tog.on{background:var(--gr);border-color:var(--gr)}
 .tog::after{content:'';position:absolute;width:20px;height:20px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .2s}
 .tog.on::after{transform:translateX(18px)}
-/* Loan card */
-.lc{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin:0 12px 10px}
-/* Coach */
+.lc{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:16px;margin-bottom:10px}
 .coach{background:linear-gradient(135deg,rgba(88,166,255,.08),rgba(63,185,80,.05));border:1px solid rgba(88,166,255,.25);border-radius:var(--r);padding:16px;margin:0 12px 12px}
-/* Warn */
 .warn{background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.25);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--am);margin:0 12px 10px;display:flex;gap:8px;align-items:flex-start}
-/* Pulse grid */
 .pulse{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 12px 12px}
 .pcard{background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:14px 8px;text-align:center}
 .pval{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
 .plbl{font-size:10px;color:var(--mu);margin-top:3px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
-/* Row */
-.row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd)}
-.row:last-child{border-bottom:none}
-/* Img preview */
-.imgp{width:100%;border-radius:var(--rs);margin-top:8px;max-height:200px;object-fit:cover}
-/* Empty state */
 .empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:40px 20px;color:var(--mu);text-align:center;font-size:14px}
-/* Section title in settings */
 .stitle{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);padding:16px 16px 8px}
-/* Chart bars (CSS only, no library) */
-.bar-chart{display:flex;align-items:flex-end;gap:4px;height:140px;padding:0 4px}
-.bar-group{display:flex;gap:2px;align-items:flex-end;flex:1}
-.bar{border-radius:3px 3px 0 0;min-width:8px;transition:height .4s}
-.bar-label{font-size:10px;color:var(--mu);text-align:center;margin-top:4px}
-/* Pie chart CSS */
-.pie-wrap{display:flex;justify-content:center;margin-bottom:12px}
-/* Spending label buttons */
-.slbtn{flex:1;padding:9px 4px;border-radius:var(--rs);font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--el);color:var(--mu)}
-.slbtn.must{background:rgba(248,81,73,.18);color:var(--re);border-color:var(--re)}
-.slbtn.needs{background:rgba(210,153,34,.18);color:var(--am);border-color:var(--am)}
-.slbtn.wants{background:rgba(88,166,255,.18);color:var(--bl);border-color:var(--bl)}
-/* Timeline */
 .tl{position:relative;padding-left:18px}
 .tl-line{position:absolute;left:3px;top:8px;bottom:8px;width:2px;background:var(--bd);border-radius:1px}
 .tl-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;position:relative}
 .tl-dot{position:absolute;left:-15px;top:12px;width:8px;height:8px;border-radius:50%}
+.slbtn{flex:1;padding:9px 4px;border-radius:var(--rs);font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:var(--el);color:var(--mu)}
+.slbtn.must{background:rgba(248,81,73,.18);color:var(--re);border-color:var(--re)}
+.slbtn.needs{background:rgba(210,153,34,.18);color:var(--am);border-color:var(--am)}
+.slbtn.wants{background:rgba(88,166,255,.18);color:var(--bl);border-color:var(--bl)}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="warn-bar" class="warn" style="display:none">
     <span>⚠️</span>
-    <span style="flex:1;font-size:13px">Connect Supabase to save data permanently. <button onclick="goTab('settings')" style="color:var(--am);font-weight:600;text-decoration:underline;background:none;border:none;font-size:13px;cursor:pointer">Open Settings</button></span>
+    <span style="flex:1;font-size:13px">Connect Supabase to save to cloud. <button onclick="goTab('settings')" style="color:var(--am);font-weight:600;text-decoration:underline;background:none;border:none;font-size:13px;cursor:pointer">Settings</button></span>
   </div>
 
-
-  <!-- SETUP SCREEN -->
-  <div id="scr-setup" style="display:none;flex-direction:column;justify-content:center;min-height:80vh;padding:24px;flex:1;overflow-y:auto">
+  <!-- SETUP -->
+  <div id="scr-setup" style="display:none;flex-direction:column;justify-content:center;flex:1;overflow-y:auto;padding:24px">
     <div style="text-align:center;margin-bottom:32px">
       <div style="font-size:48px;margin-bottom:12px">💰</div>
       <div style="font-size:24px;font-weight:700;margin-bottom:8px">Personal Finance Dashboard</div>
-      <div style="font-size:14px;color:var(--mu);line-height:1.6">Your personal finance tracker.<br>Let's get you set up in 2 minutes.</div>
+      <div style="font-size:14px;color:var(--mu);line-height:1.6">Your personal finance tracker. Set up in 2 minutes.</div>
     </div>
-    <div id="setup-step-1">
-      <div class="fg"><div class="lbl">Your Name</div><input class="inp" id="setup-name" placeholder="e.g. Sachin" style="font-size:16px"></div>
-      <div class="fg"><div class="lbl">Monthly Salary (in-hand)</div>
-        <div style="position:relative">
-          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mu);font-size:16px">₹</span>
-          <input class="inp" id="setup-salary" type="number" placeholder="0" style="font-size:16px;padding-left:28px">
-        </div>
-      </div>
-      <div class="fg"><div class="lbl">Supabase URL <span style="color:var(--mu);font-weight:400;text-transform:none">(optional, for cloud sync)</span></div>
-        <input class="inp" id="setup-sb-url" placeholder="https://xxxx.supabase.co" style="font-size:13px">
-      </div>
-      <div class="fg"><div class="lbl">Supabase Anon Key <span style="color:var(--mu);font-weight:400;text-transform:none">(optional)</span></div>
-        <input class="inp" id="setup-sb-key" type="password" placeholder="eyJhbGci..." style="font-size:13px">
-      </div>
-      <button class="btn btn-p" style="width:100%;font-size:16px" onclick="completeSetup()">Get Started →</button>
-      <button onclick="skipSetup()" style="width:100%;text-align:center;padding:14px;font-size:14px;color:var(--mu);margin-top:8px;background:none;border:none;cursor:pointer">Skip for now</button>
+    <div class="fg"><div class="lbl">Your Name</div><input class="inp" id="setup-name" placeholder="e.g. Sachin" style="font-size:16px"></div>
+    <div class="fg"><div class="lbl">Monthly Salary (in-hand)</div>
+      <div style="position:relative"><span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mu)">₹</span>
+      <input class="inp" id="setup-salary" type="number" placeholder="0" style="font-size:16px;padding-left:28px"></div>
     </div>
+    <div class="fg"><div class="lbl">Supabase URL (optional)</div><input class="inp" id="setup-sb-url" placeholder="https://xxxx.supabase.co" style="font-size:13px"></div>
+    <div class="fg"><div class="lbl">Supabase Anon Key (optional)</div><input class="inp" id="setup-sb-key" type="password" placeholder="eyJhbGci..." style="font-size:13px"></div>
+    <button class="btn btn-p" style="width:100%;font-size:16px;margin-bottom:8px" onclick="completeSetup()">Get Started →</button>
+    <button onclick="skipSetup()" style="width:100%;text-align:center;padding:14px;font-size:14px;color:var(--mu);background:none;border:none;cursor:pointer">Skip for now</button>
   </div>
+
   <!-- HOME -->
   <div id="scr-home" class="screen">
     <div class="ph">
@@ -204,17 +164,12 @@ input,select,textarea{font-family:inherit}
     </div>
     <div class="card" id="relief-card">
       <div class="card-title">Upcoming Relief 🎯</div>
-      <div class="tl" id="relief-list">
-        <div class="tl-line"></div>
-      </div>
-      <div style="margin-top:10px;padding:10px 12px;background:var(--el);border-radius:var(--rs)">
-        <div style="font-size:11px;color:var(--mu)">After Jul 2027, discretionary becomes</div>
-        <div style="font-size:20px;font-weight:700;color:var(--gr)">~₹48,841/month</div>
-      </div>
+      <div class="tl" id="relief-list"><div class="tl-line"></div></div>
+      <div style="margin-top:10px;padding:10px 12px;background:var(--el);border-radius:var(--rs)" id="relief-footer"></div>
     </div>
     <div class="card" id="pie-card" style="display:none">
       <div class="card-title">Where Money Goes</div>
-      <div style="font-size:11px;color:var(--mu);margin-bottom:8px">Tap any row to drill into category detail</div>
+      <div style="font-size:11px;color:var(--mu);margin-bottom:8px">Tap any row to drill down</div>
       <canvas id="pie-canvas" width="260" height="170" style="display:block;margin:0 auto 4px"></canvas>
       <div id="pie-main-legend"></div>
       <div id="pie-sub-wrap" style="display:none">
@@ -224,9 +179,16 @@ input,select,textarea{font-family:inherit}
         <div id="pie-sub-legend"></div>
       </div>
     </div>
+    <div class="card" id="home-txn-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="card-title" style="margin-bottom:0" id="home-txn-title">All Transactions</div>
+        <button onclick="clearDonutFilter()" id="clear-filter-btn" style="font-size:12px;color:var(--bl);display:none">✕ Clear</button>
+      </div>
+      <div id="home-txn-list"></div>
+    </div>
   </div>
 
-  <!-- ADD -->
+  <!-- TRANSACTIONS (Add) -->
   <div id="scr-add" class="screen">
     <div class="ph"><div class="pt">Transactions</div></div>
     <div class="pills">
@@ -234,10 +196,12 @@ input,select,textarea{font-family:inherit}
       <button class="pill" onclick="addTab('income',this)">💰 Income</button>
       <button class="pill" onclick="addTab('investment',this)">📈 Investment</button>
       <button class="pill" onclick="addTab('transfer',this)">🔄 Transfer</button>
-      <button class="pill" onclick="addTab('edit-loans',this)">🏦 Edit Loans</button>
-      <button class="pill" onclick="addTab('edit-chitti',this)">🤝 Edit Chitti</button>
-      <button class="pill" onclick="addTab('edit-invest',this)">📊 Edit Investments</button>
+      <button class="pill" onclick="addTab('edit-loans',this)">🏦 Loans</button>
+      <button class="pill" onclick="addTab('edit-chitti',this)">🤝 Chitti</button>
+      <button class="pill" onclick="addTab('edit-invest',this)">📊 Investments</button>
     </div>
+
+    <!-- Expense -->
     <div id="add-expense">
       <div class="amt" id="add-display">₹ 0</div>
       <div class="kp" style="margin-bottom:18px;padding:0 12px">
@@ -265,6 +229,12 @@ input,select,textarea{font-family:inherit}
           </div>
         </div>
         <div class="fg"><div class="lbl">Note (optional)</div><input class="inp" id="exp-note" placeholder="e.g. Swiggy, D-Mart, Petrol"></div>
+        <div class="fg"><div class="lbl">Recurrence</div>
+          <select class="sel" id="exp-recur">
+            <option value="once">One-time</option><option value="daily">Daily</option>
+            <option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option>
+          </select>
+        </div>
         <div class="fg">
           <div class="lbl">Bill / Receipt Image</div>
           <input type="file" accept="image/*" id="bill-file" style="display:none" onchange="handleImg(this)">
@@ -272,12 +242,14 @@ input,select,textarea{font-family:inherit}
             <button class="btn btn-s" style="flex:1;padding:10px;font-size:13px" onclick="document.getElementById('bill-file').click()">📷 Photo / File</button>
             <button class="btn btn-d" style="padding:10px 14px;font-size:13px;display:none" id="rm-img-btn" onclick="removeImg()">Remove</button>
           </div>
-          <img id="img-preview" class="imgp" style="display:none">
+          <img id="img-preview" style="display:none;width:100%;border-radius:var(--rs);margin-top:8px;max-height:200px;object-fit:cover">
         </div>
         <div id="add-flash" style="text-align:center;font-size:14px;font-weight:600;margin-bottom:8px;min-height:20px"></div>
         <button class="btn btn-p" style="width:100%;margin-bottom:4px" onclick="saveExpense()">Save Expense</button>
       </div>
     </div>
+
+    <!-- Income -->
     <div id="add-income" style="display:none;padding:0 12px">
       <div class="amt" id="inc-display">₹ 0</div>
       <div class="kp" style="margin-bottom:18px">
@@ -294,9 +266,14 @@ input,select,textarea{font-family:inherit}
         <div><div class="lbl">Date Received</div><input type="date" class="inp" id="inc-date"></div>
       </div>
       <div class="fg"><div class="lbl">Note</div><input class="inp" id="inc-note" placeholder="e.g. Q1 variable pay ₹24,000"></div>
+      <div class="fg"><div class="lbl">Recurrence</div>
+        <select class="sel" id="inc-recur"><option value="once">One-time</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select>
+      </div>
       <div id="inc-flash" style="text-align:center;font-size:14px;font-weight:600;margin-bottom:8px;min-height:20px"></div>
       <button class="btn btn-p" style="width:100%" onclick="saveIncome()">Save Income</button>
     </div>
+
+    <!-- Investment -->
     <div id="add-investment" style="display:none;padding:0 12px">
       <div class="amt" id="inv-display">₹ 0</div>
       <div class="kp" style="margin-bottom:18px">
@@ -310,11 +287,16 @@ input,select,textarea{font-family:inherit}
       </div>
       <div class="fg"><div class="lbl">Date</div><input type="date" class="inp" id="inv-date"></div>
       <div class="fg"><div class="lbl">Note</div><input class="inp" id="inv-note" placeholder="Fund name, bank, account..."></div>
+      <div class="fg"><div class="lbl">Recurrence</div>
+        <select class="sel" id="inv-recur"><option value="once">One-time</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select>
+      </div>
       <div id="inv-flash" style="text-align:center;font-size:14px;font-weight:600;margin-bottom:8px;min-height:20px"></div>
       <button class="btn btn-p" style="width:100%" onclick="saveInvestment()">Save Investment</button>
     </div>
+
+    <!-- Transfer -->
     <div id="add-transfer" style="display:none;padding:0 12px">
-      <div style="margin-bottom:14px;padding:12px;background:var(--el);border-radius:var(--rs);font-size:13px;color:var(--mu);line-height:1.5">Chitti payments, credit card bills, loan prepayments. These are tracked separately and don't count as daily expenses.</div>
+      <div style="margin-bottom:14px;padding:12px;background:var(--el);border-radius:var(--rs);font-size:13px;color:var(--mu);line-height:1.5">Chitti payments, credit card bills, loan prepayments. Not counted as daily expenses.</div>
       <div class="amt" id="tr-display">₹ 0</div>
       <div class="kp" style="margin-bottom:18px">
         <button class="key" onclick="tapTr('7')">7</button><button class="key" onclick="tapTr('8')">8</button><button class="key" onclick="tapTr('9')">9</button>
@@ -323,40 +305,31 @@ input,select,textarea{font-family:inherit}
         <button class="key" onclick="tapTr('.')">.</button><button class="key" onclick="tapTr('0')">0</button><button class="key" onclick="tapTr('⌫')">⌫</button>
       </div>
       <div class="fg"><div class="lbl">Transfer To</div>
-        <select class="sel" id="tr-to"><option>Chitti — Shyam Thatha 2</option><option>Chitti — Madhavi Aunty</option><option>Credit Card Bill</option><option>Car Loan Prepayment</option><option>Personal Loan Prepayment</option><option>Home Loan Prepayment</option><option>Other</option></select>
+        <select class="sel" id="tr-to"><option>Chitti - Shyam Thatha 2</option><option>Chitti - Madhavi Aunty</option><option>Credit Card Bill</option><option>Car Loan Prepayment</option><option>Personal Loan Prepayment</option><option>Home Loan Prepayment</option><option>Other</option></select>
       </div>
       <div class="fg"><div class="lbl">Date</div><input type="date" class="inp" id="tr-date"></div>
       <div class="fg"><div class="lbl">Note</div><input class="inp" id="tr-note"></div>
       <div id="tr-flash" style="text-align:center;font-size:14px;font-weight:600;margin-bottom:8px;min-height:20px"></div>
       <button class="btn btn-p" style="width:100%" onclick="saveTransfer()">Save Transfer</button>
     </div>
-  </div>
 
-  <!-- Edit Loans -->
-  <div id="add-edit-loans" style="display:none;padding:0 12px">
-    <div style="margin-bottom:12px;padding:10px 12px;background:var(--el);border-radius:var(--rs);font-size:13px;color:var(--mu);line-height:1.5">
-      Add, edit or delete your loans and EMIs.
+    <!-- Loans (inside scr-add) -->
+    <div id="add-edit-loans" style="display:none;padding:0 12px">
+      <div id="txn-emi-list"></div>
+      <button class="btn btn-p" style="width:100%;margin-top:8px" onclick="openAddLoan('emi')">+ Add New Loan / EMI</button>
     </div>
-    <div id="txn-emi-list"></div>
-    <button class="btn btn-p" style="width:100%;margin-top:8px" onclick="openAddLoan('emi')">+ Add New Loan / EMI</button>
-  </div>
 
-  <!-- Edit Chitti -->
-  <div id="add-edit-chitti" style="display:none;padding:0 12px">
-    <div style="margin-bottom:12px;padding:10px 12px;background:var(--el);border-radius:var(--rs);font-size:13px;color:var(--mu);line-height:1.5">
-      Add, edit or delete your Chitti commitments.
+    <!-- Chitti (inside scr-add) -->
+    <div id="add-edit-chitti" style="display:none;padding:0 12px">
+      <div id="txn-chitti-list"></div>
+      <button class="btn btn-p" style="width:100%;margin-top:8px" onclick="openAddLoan('chitti')">+ Add New Chitti</button>
     </div>
-    <div id="txn-chitti-list"></div>
-    <button class="btn btn-p" style="width:100%;margin-top:8px" onclick="openAddLoan('chitti')">+ Add New Chitti</button>
-  </div>
 
-  <!-- Edit Investments -->
-  <div id="add-edit-invest" style="display:none;padding:0 12px">
-    <div style="margin-bottom:12px;padding:10px 12px;background:var(--el);border-radius:var(--rs);font-size:13px;color:var(--mu);line-height:1.5">
-      Log your investment entries. Add one per payment made.
+    <!-- Investments log (inside scr-add) -->
+    <div id="add-edit-invest" style="display:none;padding:0 12px">
+      <div id="txn-inv-list"></div>
+      <button class="btn btn-p" style="width:100%;margin-top:8px" onclick="openAddInvModal()">+ Log Investment</button>
     </div>
-    <div id="txn-inv-list"></div>
-    <button class="btn btn-p" style="width:100%;margin-top:8px" onclick="openAddInvModal()">+ Log Investment</button>
   </div>
 
   <!-- ANALYSIS -->
@@ -378,73 +351,26 @@ input,select,textarea{font-family:inherit}
       <div style="padding:0 12px 10px;display:flex;align-items:center;gap:8px">
         <span style="font-size:12px;color:var(--mu);white-space:nowrap">Period:</span>
         <select class="sel" id="trend-period" onchange="renderTrends()" style="font-size:13px;padding:8px 12px">
-          <option value="1">Last Month</option>
-          <option value="6" selected>Last 6 Months</option>
-          <option value="12">Last 12 Months</option>
-          <option value="18">Last 18 Months</option>
-          <option value="all">All History</option>
+          <option value="1">Last Month</option><option value="6" selected>Last 6 Months</option>
+          <option value="12">Last 12 Months</option><option value="18">Last 18 Months</option><option value="all">All History</option>
         </select>
       </div>
-      <div class="card">
-        <div class="card-title">Income Allocation — Stacked Bar</div>
-        <div id="stacked-chart" style="display:flex;align-items:flex-end;gap:3px;height:140px;padding:0 2px;overflow-x:auto"></div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:center" id="stacked-legend"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Income Trend</div>
-        <svg id="income-line" width="100%" height="110" style="overflow:visible"></svg>
-        <div style="display:flex;justify-content:space-between;padding:2px 4px 0;overflow:hidden" id="income-line-labels"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Expense Trend</div>
-        <svg id="expense-line" width="100%" height="110" style="overflow:visible"></svg>
-        <div style="display:flex;justify-content:space-between;padding:2px 4px 0;overflow:hidden" id="expense-line-labels"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">EMI + Chitti Burden</div>
-        <svg id="emi-line" width="100%" height="110" style="overflow:visible"></svg>
-        <div style="display:flex;justify-content:space-between;padding:2px 4px 0;overflow:hidden" id="emi-line-labels"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Savings Rate %</div>
-        <svg id="line-chart" width="100%" height="110" style="overflow:visible"></svg>
-        <div style="display:flex;justify-content:space-between;padding:2px 4px 0;overflow:hidden" id="line-labels"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Must Have / Needs / Wants Split</div>
-        <canvas id="label-donut" width="260" height="150" style="display:block;margin:0 auto 8px"></canvas>
-        <div id="label-donut-legend"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Category Breakdown — Period Total</div>
-        <canvas id="overview-pie" width="260" height="160" style="display:block;margin:0 auto 10px"></canvas>
-        <div id="overview-pie-legend"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Spend by Label</div>
-        <div id="tr-label-breakdown"></div>
-      </div>
+      <div class="card"><div class="card-title">Income Allocation — Stacked</div><div id="stacked-chart" style="display:flex;align-items:flex-end;gap:3px;height:140px;padding:0 2px;overflow-x:auto"></div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:center" id="stacked-legend"></div></div>
+      <div class="card"><div class="card-title">Income Trend</div><svg id="income-line" width="100%" height="110" style="overflow:visible"></svg><div style="display:flex;justify-content:space-between;padding:2px 4px 0;overflow:hidden" id="income-line-labels"></div></div>
+      <div class="card"><div class="card-title">Expense Trend</div><svg id="expense-line" width="100%" height="110" style="overflow:visible"></svg><div style="display:flex;justify-content:space-between;padding:2px 4px 0;overflow:hidden" id="expense-line-labels"></div></div>
+      <div class="card"><div class="card-title">EMI + Chitti Burden</div><svg id="emi-line" width="100%" height="110" style="overflow:visible"></svg><div style="display:flex;justify-content:space-between;padding:2px 4px 0;overflow:hidden" id="emi-line-labels"></div></div>
+      <div class="card"><div class="card-title">Savings Rate %</div><svg id="line-chart" width="100%" height="110" style="overflow:visible"></svg><div style="display:flex;justify-content:space-between;padding:2px 4px 0;overflow:hidden" id="line-labels"></div></div>
+      <div class="card"><div class="card-title">Must Have / Needs / Wants Split</div><canvas id="label-donut" width="260" height="150" style="display:block;margin:0 auto 8px"></canvas><div id="label-donut-legend"></div></div>
+      <div class="card"><div class="card-title">Category Breakdown</div><canvas id="overview-pie" width="260" height="160" style="display:block;margin:0 auto 10px"></canvas><div id="overview-pie-legend"></div></div>
+      <div class="card"><div class="card-title">Spend by Label</div><div id="tr-label-breakdown"></div></div>
     </div>
     <div id="tr-category" style="display:none">
-      <div style="padding:0 12px 10px">
-        <select class="sel" id="cat-month-sel" onchange="renderCatBreakdown()"></select>
-      </div>
-      <div id="cat-pie-wrap" class="card">
-        <canvas id="cat-pie" width="260" height="160" style="display:block;margin:0 auto 12px"></canvas>
-        <div id="cat-legend"></div>
-      </div>
-
+      <div style="padding:0 12px 10px"><select class="sel" id="cat-month-sel" onchange="renderCatBreakdown()"></select></div>
+      <div class="card"><canvas id="cat-pie" width="260" height="160" style="display:block;margin:0 auto 12px"></canvas><div id="cat-legend"></div></div>
     </div>
-    <div id="tr-savings" style="display:none">
-      <div class="card">
-        <div class="card-title">Monthly Summary</div>
-        <div id="savings-list"></div>
-      </div>
-    </div>
+    <div id="tr-savings" style="display:none"><div class="card"><div class="card-title">Monthly Summary</div><div id="savings-list"></div></div></div>
     <div id="tr-history" style="display:none">
-      <div style="padding:0 12px 10px">
-        <select class="sel" id="hist-month-sel" onchange="renderHistory()"></select>
-      </div>
+      <div style="padding:0 12px 10px"><select class="sel" id="hist-month-sel" onchange="renderHistory()"></select></div>
       <div class="card" id="hist-list"></div>
     </div>
   </div>
@@ -452,7 +378,6 @@ input,select,textarea{font-family:inherit}
   <!-- SETTINGS -->
   <div id="scr-settings" class="screen">
     <div class="ph"><div class="pt">Settings</div></div>
-
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px">
       <div class="stitle" style="padding:0;margin:0">☁️ Cloud Sync (Supabase)</div>
       <div id="sb-badge" style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(63,185,80,.15);color:var(--gr);display:none">● Connected</div>
@@ -467,7 +392,6 @@ input,select,textarea{font-family:inherit}
       <button class="btn btn-s" style="width:100%;padding:10px;font-size:13px" onclick="sbLoad()">☁️ Sync from Cloud</button>
       <div id="sb-status" style="margin-top:8px;font-size:13px;font-weight:500;min-height:20px"></div>
     </div>
-
     <div class="stitle">Profile</div>
     <div style="margin:0 12px 4px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:14px">
       <div class="lbl">Monthly Salary (in-hand)</div>
@@ -477,30 +401,18 @@ input,select,textarea{font-family:inherit}
       </div>
       <div id="sal-current" style="font-size:11px;color:var(--mu);margin-top:4px"></div>
     </div>
-
     <div class="stitle">Categories</div>
     <div style="margin:0 12px 4px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden" id="cat-settings-list"></div>
-
     <div class="stitle">Preferences</div>
     <div style="margin:0 12px 4px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden">
-      <div class="sr">
-        <span style="font-size:15px">Default Account</span>
-        <select id="def-acc" onchange="LS.set('def_acc',this.value)" style="background:transparent;border:none;color:var(--mu);font-size:14px;outline:none">
-          <option>Cash</option><option>ICICI</option><option>SBI</option><option>UPI</option><option>Credit Card</option>
-        </select>
-      </div>
-      <div class="sr" style="border-bottom:none">
-        <span style="font-size:15px">Coach Notifications</span>
-        <div class="tog" id="notif-tog" onclick="toggleNotif()"></div>
-      </div>
+      <div class="sr"><span style="font-size:15px">Default Account</span><select id="def-acc" onchange="LS.set('def_acc',this.value)" style="background:transparent;border:none;color:var(--mu);font-size:14px;outline:none"><option>Cash</option><option>ICICI</option><option>SBI</option><option>UPI</option><option>Credit Card</option></select></div>
+      <div class="sr" style="border-bottom:none"><span style="font-size:15px">Coach Notifications</span><div class="tog" id="notif-tog" onclick="toggleNotif()"></div></div>
     </div>
-
     <div class="stitle">Budget Limits</div>
     <div style="margin:0 12px 4px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:14px">
-      <div style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5">Based on your ₹16,395 discretionary income after all fixed obligations.</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:10px">Recommended based on your income after fixed obligations.</div>
       <div id="budget-list"></div>
     </div>
-
     <div class="stitle">Data Management</div>
     <div style="margin:0 12px 4px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden">
       <div class="sr" onclick="sbLoad()" style="cursor:pointer"><span style="font-size:15px">☁️ Sync from Cloud</span><span style="color:var(--mu);font-size:13px">›</span></div>
@@ -508,39 +420,22 @@ input,select,textarea{font-family:inherit}
       <div class="sr" onclick="exportCSV()" style="cursor:pointer"><span style="font-size:15px">📤 Export All Data</span><span style="color:var(--mu);font-size:13px">›</span></div>
       <div class="sr" onclick="showStats()" style="cursor:pointer"><span style="font-size:15px">📊 Data Stats</span><span id="stat-count" style="color:var(--mu);font-size:13px"></span></div>
       <div class="sr" onclick="clearData()" style="cursor:pointer"><span style="font-size:15px;color:var(--re)">🗑️ Clear All Data</span><span style="color:var(--re);font-size:13px">›</span></div>
-      <div class="sr" onclick="resetProfile()" style="cursor:pointer;border-bottom:none"><span style="font-size:15px;color:var(--re)">👤 Reset Profile (Switch User)</span><span style="color:var(--re);font-size:13px">›</span></div>
+      <div class="sr" onclick="resetProfile()" style="cursor:pointer;border-bottom:none"><span style="font-size:15px;color:var(--re)">👤 Reset Profile</span><span style="color:var(--re);font-size:13px">›</span></div>
     </div>
-
     <div class="stitle">About</div>
     <div style="margin:0 12px 20px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden">
       <div class="sr"><span style="font-size:15px">App</span><span style="color:var(--mu);font-size:13px">Personal Finance Dashboard v1.0</span></div>
-      <div class="sr"><span style="font-size:15px">Built for</span><span style="color:var(--mu);font-size:13px">Sachin · Jul 2026</span></div>
-      <div class="sr" style="border-bottom:none"><span style="font-size:15px">Tracks from</span><span style="color:var(--mu);font-size:13px">July 2026</span></div>
+      <div class="sr" style="border-bottom:none"><span style="font-size:15px">Tracks from</span><span style="color:var(--mu);font-size:13px">Your first entry</span></div>
     </div>
   </div>
 
   <!-- TAB BAR -->
   <div id="tabbar">
-    <button class="tab active" onclick="goTab('home')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-      <span>Home</span>
-    </button>
-    <button class="tab" onclick="goTab('add')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      <span>Txns</span>
-    </button>
-    <button class="tab" onclick="goTab('loans')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l9-5 9 5"/><line x1="7" y1="12" x2="7" y2="16"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="17" y1="12" x2="17" y2="16"/></svg>
-      <span>Analysis</span>
-    </button>
-    <button class="tab" onclick="goTab('trends')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      <span>Trends</span>
-    </button>
-    <button class="tab" onclick="goTab('settings')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      <span>Settings</span>
-    </button>
+    <button class="tab active" onclick="goTab('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Home</span></button>
+    <button class="tab" onclick="goTab('add')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Txns</span></button>
+    <button class="tab" onclick="goTab('loans')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l9-5 9 5"/><line x1="7" y1="12" x2="7" y2="16"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="17" y1="12" x2="17" y2="16"/></svg><span>Analysis</span></button>
+    <button class="tab" onclick="goTab('trends')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Trends</span></button>
+    <button class="tab" onclick="goTab('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span>Settings</span></button>
   </div>
 </div>
 
@@ -553,9 +448,7 @@ input,select,textarea{font-family:inherit}
       <div><div class="lbl">Emoji</div><input class="inp" id="nc-emoji" style="text-align:center;font-size:20px;padding:8px 4px"></div>
       <div><div class="lbl">Name</div><input class="inp" id="nc-name" placeholder="Category name"></div>
     </div>
-    <div class="fg"><div class="lbl">Spend Type</div>
-      <select class="sel" id="nc-label"><option>Must Have</option><option>Needs</option><option selected>Wants</option></select>
-    </div>
+    <div class="fg"><div class="lbl">Spend Type</div><select class="sel" id="nc-label"><option>Must Have</option><option>Needs</option><option selected>Wants</option></select></div>
     <div style="display:flex;gap:8px;margin-top:4px">
       <button class="btn btn-p" style="flex:1" onclick="saveCategory()">Save</button>
       <button class="btn btn-d" style="flex:1;display:none" id="del-cat-btn" onclick="deleteCategory()">Delete</button>
@@ -565,7 +458,7 @@ input,select,textarea{font-family:inherit}
 
 <div class="ov" id="modal-loan"><div class="mo">
   <div class="mh2"></div>
-  <div class="mhd"><span class="mtt" id="modal-loan-title">Add Loan / Commitment</span><button onclick="closeModal('modal-loan')">✕</button></div>
+  <div class="mhd"><span class="mtt" id="modal-loan-title">Add Loan</span><button onclick="closeModal('modal-loan')">✕</button></div>
   <div class="mb">
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button id="loan-type-emi" class="btn btn-p" style="flex:1;padding:10px;font-size:13px" onclick="setLoanType('emi')">🏦 Loan/EMI</button>
@@ -583,8 +476,8 @@ input,select,textarea{font-family:inherit}
       <div><div class="lbl">Start Month</div><input type="month" class="inp" id="l-start"></div>
       <div><div class="lbl">End Month</div><input type="month" class="inp" id="l-end"></div>
     </div>
-    <div class="fg" id="l-cat-wrap"><div class="lbl">Purpose</div><input class="inp" id="l-cat" placeholder="e.g. Family, CC Clearing"></div>
-    <div class="fg" id="l-balance-wrap"><div class="lbl">Current Balance (optional, for home loan)</div><input class="inp" type="number" id="l-balance" placeholder="e.g. 160000"></div>
+    <div class="fg" id="l-cat-wrap" style="display:none"><div class="lbl">Purpose</div><input class="inp" id="l-cat" placeholder="e.g. Family, CC Clearing"></div>
+    <div class="fg"><div class="lbl">Current Balance (optional)</div><input class="inp" type="number" id="l-balance" placeholder="e.g. 160000"></div>
     <div style="display:flex;gap:8px;margin-top:4px">
       <button class="btn btn-p" style="flex:1" onclick="saveLoan()">Save</button>
       <button class="btn btn-d" style="flex:1;display:none" id="del-loan-btn" onclick="deleteLoan()">Delete</button>
@@ -596,11 +489,11 @@ input,select,textarea{font-family:inherit}
   <div class="mh2"></div>
   <div class="mhd"><span class="mtt">Import CSV</span><button onclick="closeModal('modal-import')">✕</button></div>
   <div class="mb">
-    <div style="margin-bottom:12px;font-size:13px;color:var(--mu);line-height:1.5">Import your Spendee CSV export. Supports Spendee and Spending app formats.</div>
+    <div style="margin-bottom:12px;font-size:13px;color:var(--mu);line-height:1.5">Import your Spendee CSV or the remapped CSV file.</div>
     <div class="fg"><input type="file" accept=".csv" id="import-file" class="inp" style="font-size:13px;padding:10px" onchange="handleImportFile(this)"></div>
-    <div id="import-preview" style="margin-bottom:12px;display:none">
-      <div class="lbl">Preview (first 3 rows)</div>
-      <div id="import-preview-data" style="background:var(--el);border-radius:var(--rs);padding:8px;font-size:10px;color:var(--mu);overflow:auto;max-height:100px;word-break:break-all"></div>
+    <div id="import-preview" style="display:none;margin-bottom:12px">
+      <div class="lbl">Preview</div>
+      <div id="import-preview-data" style="background:var(--el);border-radius:var(--rs);padding:8px;font-size:10px;color:var(--mu);max-height:100px;overflow:auto;word-break:break-all"></div>
     </div>
     <div id="import-status" style="font-size:13px;margin-bottom:10px;min-height:18px"></div>
     <button class="btn btn-p" style="width:100%;display:none" id="import-btn" onclick="doImport()">Import Now</button>
@@ -614,6 +507,7 @@ input,select,textarea{font-family:inherit}
 </div></div>
 
 <script>
+
 // ── STORAGE ────────────────────────────────────────────────────────────
 const LS={
   get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},
@@ -922,7 +816,7 @@ function renderHome(){
   if(lblHtml.trim()){document.getElementById('label-bars').innerHTML=lblHtml;lc.style.display='block';}
   else lc.style.display='none';
 
-  // Dual Donut
+  activeMainFilter=null;activeSubFilter=null;
   renderMainDonut(totalIncome,totalSpent,emiOut,chittiOut,invOut,jio,monthTxns);
   renderHomeTxnList(null,null);
 
@@ -1058,31 +952,36 @@ function renderSubDonut(filter){
   document.getElementById('pie-sub-wrap').style.display='block';
   drawDonut('pie-sub-canvas',data.map(d=>[d[0],d[1]]),PIE_C);
   const total=data.reduce((s,d)=>s+d[1],0);
-  document.getElementById('pie-sub-legend').innerHTML=data.map((d,i)=>`
-    <div onclick="${filter==='expenses'?`toggleSubFilter('${d[2]}')`:'void(0)'}"
-      style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--bd);cursor:${filter==='expenses'?'pointer':'default'};border-radius:4px;transition:background .1s" id="sf-${d[2]}">
-      <div style="width:8px;height:8px;border-radius:50%;background:${PIE_C[i%PIE_C.length]};flex-shrink:0"></div>
-      <span style="flex:1;font-size:12px">${d[0]}</span>
-      <span style="font-size:11px;color:var(--mu)">${Math.round(d[1]/total*100)}%</span>
-      <span style="font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;min-width:60px;text-align:right">${fmt(d[1])}</span>
-      ${filter==='expenses'?'<span style="color:var(--bl);font-size:12px">›</span>':''}
-    </div>`).join('');
+  document.getElementById('pie-sub-legend').innerHTML=data.map((d,i)=>{
+    const isExp=filter==='expenses';
+    const catKey=String(d[2]||'');
+    const onclick=isExp?'toggleSubFilter(&quot;'+catKey+'&quot;)':'void(0)';
+    return '<div onclick="'+onclick+'" '+
+      'style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--bd);cursor:'+(isExp?'pointer':'default')+'" id="sf-'+catKey+'">'+
+      '<div style="width:8px;height:8px;border-radius:50%;background:'+PIE_C[i%PIE_C.length]+';flex-shrink:0"></div>'+
+      '<span style="flex:1;font-size:13px">'+d[0]+'</span>'+
+      '<span style="font-size:11px;color:var(--mu);min-width:28px;text-align:center">'+Math.round(d[1]/total*100)+'%</span>'+
+      '<span style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;min-width:64px;text-align:right">'+fmt(d[1])+'</span>'+
+      (isExp?'<span style="color:var(--bl);font-size:14px;margin-left:4px">›</span>':'')+
+    '</div>';
+  }).join('');;
 }
 
 function toggleSubFilter(catId){
+  if(!catId) return;
   if(activeSubFilter===catId){
     activeSubFilter=null;
-    document.querySelectorAll('[id^="sf-"]').forEach(el=>el.style.background='');
-    renderHomeTxnList(activeMainFilter,null);
+    document.querySelectorAll('[id^="sf-"]').forEach(el=>{if(el)el.style.background='';});
+    renderHomeTxnList('expenses',null);
   } else {
     activeSubFilter=catId;
-    document.querySelectorAll('[id^="sf-"]').forEach(el=>el.style.background='');
+    document.querySelectorAll('[id^="sf-"]').forEach(el=>{if(el)el.style.background='';});
     const el=document.getElementById('sf-'+catId);
-    if(el) el.style.background='rgba(88,166,255,.08)';
-    renderHomeTxnList(activeMainFilter,catId);
+    if(el) el.style.background='rgba(88,166,255,.1)';
+    renderHomeTxnList('expenses',catId);
+    setTimeout(()=>{const c=document.getElementById('home-txn-card');if(c)c.scrollIntoView({behavior:'smooth',block:'start'});},200);
   }
 }
-
 function clearDonutFilter(){
   activeMainFilter=null; activeSubFilter=null;
   document.getElementById('pie-sub-wrap').style.display='none';
@@ -1091,60 +990,62 @@ function clearDonutFilter(){
   renderHomeTxnList(null,null);
 }
 
+function txnRow(t){
+  const cat=categories.find(c=>c.id===t.category)||{emoji:'📦',name:t.category||'?'};
+  const isInc=t.type==='income';
+  const isInv=t.type==='investment';
+  const bc=t.label==='Must Have'?'bm':t.label==='Needs'?'bn':'bw';
+  const emoji=isInc?'💰':isInv?'📈':cat.emoji;
+  const label=isInc?(t.incomeType||'Income'):isInv?(t.investType||'Investment'):cat.name;
+  const color=isInc?'var(--gr)':isInv?'var(--bl)':'var(--tx)';
+  const sign=isInc||isInv?'+':'-';
+  return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)">'+
+    '<div style="width:36px;height:36px;border-radius:50%;background:var(--el);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">'+emoji+'</div>'+
+    '<div style="flex:1;min-width:0">'+
+      '<div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+label+(t.note?' - '+t.note:'')+'</div>'+
+      '<div style="display:flex;align-items:center;gap:6px;margin-top:3px">'+
+        '<span style="font-size:11px;color:var(--mu)">'+(t.date?t.date.slice(5):'')+'</span>'+
+        (t.label?'<span class="badge '+bc+'" style="font-size:9px;padding:1px 6px">'+t.label+'</span>':'')+
+        (t.image?'<span style="font-size:10px;color:var(--bl)">📎</span>':'')+
+        (t.recurrence&&t.recurrence!=='once'?'<span style="font-size:9px;color:var(--am)">🔄 '+t.recurrence+'</span>':'')+
+      '</div>'+
+    '</div>'+
+    '<div style="font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:'+color+';flex-shrink:0">'+sign+fmt(t.amount)+'</div>'+
+  '</div>';
+}
+
 function renderHomeTxnList(mainFilter,catFilter){
   const mk=curMonth;
-  let txns=[];
   const clearBtn=document.getElementById('clear-filter-btn');
   const title=document.getElementById('home-txn-title');
-
-  if(!mainFilter){
-    txns=transactions.filter(t=>t.month===mk).sort((a,b)=>b.date.localeCompare(a.date));
-    if(title) title.textContent='All Transactions This Month';
-    if(clearBtn) clearBtn.style.display='none';
-  } else if(mainFilter==='expenses'){
-    if(catFilter){
-      txns=transactions.filter(t=>t.month===mk&&t.type==='expense'&&t.category===catFilter).sort((a,b)=>b.date.localeCompare(a.date));
-      const cat=categories.find(c=>c.id===catFilter)||{emoji:'📦',name:catFilter};
-      if(title) title.textContent=cat.emoji+' '+cat.name+' Transactions';
-      if(clearBtn) clearBtn.style.display='block';
-    } else {
-      txns=transactions.filter(t=>t.month===mk&&t.type==='expense').sort((a,b)=>b.date.localeCompare(a.date));
-      if(title) title.textContent='All Expense Transactions';
-      if(clearBtn) clearBtn.style.display='block';
-    }
-  } else {
-    // For EMI/Chitti/Investments just show all month transactions
-    txns=transactions.filter(t=>t.month===mk).sort((a,b)=>b.date.localeCompare(a.date));
-    if(title) title.textContent='All Transactions This Month';
-    if(clearBtn) clearBtn.style.display='none';
-  }
-
   const list=document.getElementById('home-txn-list');
   if(!list) return;
+  let txns=[],titleText='All Transactions',showClear=false;
+  const allData=[...transactions,...income,...investments];
+  if(!mainFilter){
+    txns=allData.filter(t=>t.month===mk).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    titleText='All Transactions - '+MONTHS[parseInt(mk.split('-')[1])-1]+' '+mk.split('-')[0];
+  } else if(mainFilter==='expenses'){
+    if(catFilter){
+      txns=transactions.filter(t=>t.month===mk&&t.type==='expense'&&t.category===catFilter).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+      const cat=categories.find(c=>c.id===catFilter)||{emoji:'📦',name:catFilter};
+      titleText=cat.emoji+' '+cat.name;showClear=true;
+    } else {
+      txns=transactions.filter(t=>t.month===mk&&t.type==='expense').sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+      titleText='All Expenses';showClear=true;
+    }
+  } else {
+    txns=allData.filter(t=>t.month===mk).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  }
+  if(title) title.textContent=titleText+(txns.length?' ('+txns.length+')':'');
+  if(clearBtn) clearBtn.style.display=showClear?'block':'none';
   if(!txns.length){
-    const allMonths=[...new Set(transactions.map(t=>t.month))].sort();
-    const hint=allMonths.length>0?'Your data is in '+MONTHS[parseInt(allMonths[allMonths.length-1].split('-')[1])-1]+' '+allMonths[allMonths.length-1].split('-')[0]+' — use ← to navigate back':'Tap + to add your first expense';
-    list.innerHTML='<div class="empty" style="padding:20px"><div style="font-size:32px">📊</div><div>No entries for '+MONTHS[parseInt(curMonth.split('-')[1])-1]+' '+curMonth.split('-')[0]+'</div><div style="font-size:12px;margin-top:6px;color:var(--mu)">'+hint+'</div></div>';
+    const allMonths=[...new Set(allData.map(t=>t.month))].filter(Boolean).sort();
+    const hint=allMonths.length>0?'Latest: '+MONTHS[parseInt(allMonths[allMonths.length-1].split('-')[1])-1]+' '+allMonths[allMonths.length-1].split('-')[0]+' - use left arrow':'Tap + to add your first entry';
+    list.innerHTML='<div class="empty" style="padding:20px"><div style="font-size:32px">📭</div><div style="margin-top:8px">Nothing for '+MONTHS[parseInt(mk.split('-')[1])-1]+' '+mk.split('-')[0]+'</div><div style="font-size:12px;margin-top:6px;color:var(--mu)">'+hint+'</div></div>';
     return;
   }
-
-  list.innerHTML=txns.map(t=>{
-    const cat=categories.find(c=>c.id===t.category)||{emoji:'📦',name:t.category||'?'};
-    const isInc=t.type==='income';
-    const bc=t.label==='Must Have'?'bm':t.label==='Needs'?'bn':'bw';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)">
-      <div style="width:36px;height:36px;border-radius:50%;background:var(--el);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${isInc?'💰':cat.emoji}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${isInc?(t.incomeType||'Income'):cat.name}${t.note?' — '+t.note:''}</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
-          <span style="font-size:11px;color:var(--mu)">${t.date?t.date.slice(5):''}</span>
-          ${t.label?`<span class="badge ${bc}" style="font-size:9px;padding:1px 6px">${t.label}</span>`:''}
-          ${t.image?'<span style="font-size:10px;color:var(--bl)">📎</span>':''}
-        </div>
-      </div>
-      <div style="font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:${isInc?'var(--gr)':'var(--tx)'};flex-shrink:0">${isInc?'+':''}${fmt(t.amount)}</div>
-    </div>`;
-  }).join('');
+  list.innerHTML=txns.map(t=>txnRow(t)).join('');
 }
 
 function renderBreakdown(totalIncome,emiOut,chittiOut,invOut,jio,discretionary,totalSpent,daysLeft,leftMonth){
@@ -2256,6 +2157,7 @@ function init(){
 }
 
 init();
+
 </script>
 </body>
 </html>
